@@ -41,6 +41,7 @@ impl Content {
         }
     }
 
+    #[allow(dead_code)]
     pub fn label(self) -> &'static str {
         match self {
             Content::Mod => "Fabric mods",

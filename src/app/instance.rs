@@ -138,7 +138,7 @@ impl App {
             let worlds = scan_saves(&dir);
             let shots = scan_shots(&dir);
             later(move |app| {
-                let editing = app.ui().map(|u| u.get_profile_edit().id.to_string() == id).unwrap_or(false);
+                let editing = app.ui().map(|u| u.get_profile_edit().id == id).unwrap_or(false);
                 if editing {
                     app.models.worlds.set_vec(worlds);
                     app.models.shots.set_vec(shots.items.iter().enumerate().map(|(i, (file, _))| ShotItem {

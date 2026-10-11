@@ -76,10 +76,13 @@ pub struct Hit {
     #[serde(default)]
     pub author: String,
     #[serde(default)]
+    #[allow(dead_code)]
     pub categories: Vec<String>,
     #[serde(default)]
+    #[allow(dead_code)]
     pub followers: u64,
     #[serde(default)]
+    #[allow(dead_code)]
     pub project_type: String,
 }
 
@@ -94,6 +97,7 @@ pub struct GalleryImage {
     #[serde(default)]
     pub url: String,
     #[serde(default)]
+    #[allow(dead_code)]
     pub title: Option<String>,
     #[serde(default)]
     pub featured: bool,
@@ -102,6 +106,7 @@ pub struct GalleryImage {
 #[derive(Clone, Debug, Deserialize)]
 pub struct Donation {
     #[serde(default)]
+    #[allow(dead_code)]
     pub id: String,
     #[serde(default)]
     pub platform: String,
@@ -114,8 +119,10 @@ pub struct License {
     #[serde(default)]
     pub id: String,
     #[serde(default)]
+    #[allow(dead_code)]
     pub name: String,
     #[serde(default)]
+    #[allow(dead_code)]
     pub url: Option<String>,
 }
 
@@ -252,6 +259,7 @@ pub fn pick(list: Vec<ModVersion>, number: Option<&str>) -> Option<ModVersion> {
     release.or_else(|| list.into_iter().next())
 }
 
+#[allow(dead_code)]
 pub fn search(http: &Http, ep: &Endpoints, query: &str, game: Option<&str>, kind: &str) -> Result<Search, String> {
     search_filtered(http, ep, query, kind, &Filter { game: game.map(str::to_string), ..Default::default() })
 }

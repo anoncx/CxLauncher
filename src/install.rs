@@ -48,6 +48,7 @@ pub fn mods_dir(paths: &Paths, profile: &str) -> PathBuf {
     paths.profile(profile).join("mods")
 }
 
+#[allow(dead_code)]
 pub fn content_dir(paths: &Paths, profile: &str, content: &str) -> PathBuf {
     match content {
         "resourcepacks" | "shaderpacks" => paths.profile(profile).join(content),
