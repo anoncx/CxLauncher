@@ -1,0 +1,584 @@
+import { Theme } from "theme.slint";
+import { Button, Icon, Icons, Input, Segmented, Select, Sheet, SheetTitle, Spinner, Toggle } from "components.slint";
+import { Command, ProfileEdit, ShotItem, WorldItem } from "types.slint";
+
+component Step inherits HorizontalLayout {
+    in property <int> n;
+    in property <string> text;
+    spacing: 10px;
+
+    VerticalLayout {
+        alignment: start;
+        Rectangle {
+            width: 20px;
+            height: 20px;
+            border-radius: 10px;
+            background: Theme.surface-2;
+            Text {
+                text: root.n;
+                font-family: Theme.mono;
+                font-size: 11px;
+                color: Theme.ink;
+            }
+        }
+    }
+
+    Text {
+        text: root.text;
+        color: Theme.ink-2;
+        wrap: word-wrap;
+        vertical-alignment: center;
+        horizontal-stretch: 1;
+    }
+}
+
+export component SigninSheet inherits Sheet {
+    in property <int> mode;
+    in property <string> code;
+    in property <string> link;
+    in property <string> error;
+    callback command(string);
+    callback paste(string);
+
+    card-width: 460px;
+
+    SheetTitle {
+        text: "Sign in with Microsoft";
+        badge: "MSA";
+        live: root.mode == 1 || root.mode == 2;
+    }
+
+    if root.mode == 0 || root.mode == 3: VerticalLayout {
+        spacing: 12px;
+        padding-top: 18px;
+        padding-bottom: 18px;
+        alignment: center;
+
+        HorizontalLayout {
+            alignment: center;
+            Spinner { size: 26px; }
+        }
+
+        Text {
+            text: root.mode == 0 ? "Asking Microsoft for a sign-in code…" : "Signing in to Minecraft…";
+            color: Theme.grey;
+            horizontal-alignment: center;
+        }
+    }
+
+    if root.mode == 1: VerticalLayout {
+        spacing: 14px;
+
+        Step { n: 1; text: "Open " + root.link + " on any device."; }
+        Step { n: 2; text: "Enter this code and sign in with the account that owns Minecraft."; }
+
+        Rectangle {
+            height: 86px;
+            border-radius: 14px;
+            background: Theme.well;
+            border-width: 1px;
+            border-color: copy.has-hover ? Theme.focus : Theme.hair;
+            animate border-color { duration: Theme.quick; }
+
+            copy := TouchArea {
+                mouse-cursor: MouseCursor.pointer;
+                clicked => { root.command("signin-copy"); }
+            }
+
+            Text {
+                text: root.code;
+                font-family: Theme.dots;
+                font-weight: 900;
+                font-size: 40px;
+                letter-spacing: 6px;
+                color: Theme.ink;
+            }
+
+            Text {
+                x: parent.width - self.width - 12px;
+                y: parent.height - self.height - 8px;
+                text: "Click to copy";
+                font-size: 10.5px;
+                color: Theme.grey;
+                opacity: copy.has-hover ? 1 : 0;
+                animate opacity { duration: Theme.quick; }
+            }
+        }
+
+        HorizontalLayout {
+            spacing: 8px;
+            alignment: center;
+
+            VerticalLayout {
+                alignment: center;
+                Spinner { size: 14px; }
+            }
+
+            Text {
+                text: "Waiting for you to finish in the browser";
+                font-size: 12px;
+                color: Theme.grey;
+                vertical-alignment: center;
+            }
+        }
+
+        HorizontalLayout {
+            spacing: 8px;
+
+            Button {
+                text: "Use browser sign-in";
+                clicked => { root.command("signin-browser"); }
+            }
+
+            Rectangle { horizontal-stretch: 1; }
+
+            Button {
+                text: "Copy code";
+                icon: Icons.copy;
+                clicked => { root.command("signin-copy"); }
+            }
+
+            Button {
+                text: "Open page";
+                icon: Icons.external;
+                kind: "primary";
+                clicked => { root.command("signin-open"); }
+            }
+        }
+    }
+
+    if root.mode == 2: VerticalLayout {
+        spacing: 14px;
+
+        Step { n: 1; text: "Sign in on the Microsoft page that opens in your browser."; }
+        Step { n: 2; text: "You land on a page that says it is not normally shown — that means the sign-in worked. Select the whole address bar, copy it, and paste it in the box below."; }
+
+        Input {
+            mono: true;
+            placeholder: "Paste the page address here (Ctrl+V)";
+            edited(t) => { root.paste(t); }
+            accepted(t) => { root.paste(t); }
+        }
+
+        HorizontalLayout {
+            spacing: 8px;
+
+            Button {
+                text: "Use a code instead";
+                clicked => { root.command("signin-device"); }
+            }
+
+            Rectangle { horizontal-stretch: 1; }
+
+            Button {
+                text: "Open sign-in page";
+                icon: Icons.external;
+                kind: "primary";
+                clicked => { root.command("signin-web"); }
+            }
+        }
+    }
+
+    if root.mode == 4: VerticalLayout {
+        spacing: 16px;
+
+        HorizontalLayout {
+            spacing: 10px;
+
+            VerticalLayout {
+                alignment: start;
+                padding-top: 1px;
+                Icon {
+                    commands: Icons.warn;
+                    tint: Theme.alert;
+                }
+            }
+
+            Text {
+                text: root.error;
+                color: Theme.ink-2;
+                wrap: word-wrap;
+                horizontal-stretch: 1;
+            }
+        }
+
+        HorizontalLayout {
+            spacing: 8px;
+            alignment: end;
+
+            Button {
+                text: "Close";
+                clicked => { root.close(); }
+            }
+
+            Button {
+                text: "Try again";
+                kind: "primary";
+                clicked => { root.command("signin-device"); }
+            }
+        }
+    }
+}
+
+export component ProfileSheet inherits Sheet {
+    in property <ProfileEdit> data;
+    in property <bool> can-delete;
+    in property <[Command]> versions;
+    in property <[Command]> profile-javas;
+    in property <string> client-game;
+    in property <[WorldItem]> worlds;
+    in property <[ShotItem]> shots;
+    in property <int> shot-count;
+    callback save(ProfileEdit);
+    callback command(string);
+
+    property <string> name: data.name;
+    property <int> glyph: data.glyph;
+    property <string> game: data.game;
+    property <bool> vanilla: data.vanilla;
+    property <bool> client: data.client;
+    property <bool> fits: root.game == "" || root.game == root.client-game;
+    property <string> server: data.server;
+    property <string> loader: data.loader;
+    property <string> java: data.java;
+    property <bool> include-snapshots;
+    property <bool> confirm;
+
+    card-width: 480px;
+
+    SheetTitle {
+        text: root.data.id == "" ? "New profile" : "Edit profile";
+        badge: root.data.pack != "" ? "PACK" : "";
+        live: true;
+    }
+
+    VerticalLayout {
+        spacing: 6px;
+
+        Text {
+            text: "Name";
+            font-size: 11.5px;
+            color: Theme.grey;
+        }
+
+        name-input := Input {
+            value: root.data.name;
+            placeholder: "My profile";
+            edited(t) => { root.name = t; }
+        }
+    }
+
+    VerticalLayout {
+        spacing: 6px;
+
+        Text {
+            text: "Icon";
+            font-size: 11.5px;
+            color: Theme.grey;
+        }
+
+        HorizontalLayout {
+            spacing: 8px;
+            alignment: start;
+
+            for g[i] in Icons.glyphs: Rectangle {
+                width: 38px;
+                height: 38px;
+                border-radius: 11px;
+                background: i == root.glyph ? Theme.ink : pick.has-hover ? Theme.surface-2 : Theme.well;
+                transform-scale: pick.pressed ? 0.9 : 1;
+                animate background { duration: Theme.quick; }
+                animate transform-scale { duration: Theme.bounce; easing: cubic-bezier(0.34, 1.56, 0.64, 1); }
+
+                pick := TouchArea {
+                    mouse-cursor: MouseCursor.pointer;
+                    clicked => { root.glyph = i; }
+                }
+
+                Icon {
+                    commands: g;
+                    tint: i == root.glyph ? Theme.paper : Theme.ink-2;
+                }
+            }
+        }
+    }
+
+    HorizontalLayout {
+        spacing: 12px;
+
+        VerticalLayout {
+            spacing: 6px;
+            horizontal-stretch: 1;
+
+            Text {
+                text: "Minecraft";
+                font-size: 11.5px;
+                color: Theme.grey;
+            }
+
+            Select {
+                options: root.versions;
+                current: root.game;
+                label: root.game == "" ? "Automatic" : root.game;
+                menu-width: 260px;
+                selected(id) => { root.game = id; }
+            }
+        }
+
+        VerticalLayout {
+            spacing: 6px;
+
+            Text {
+                text: "Loader";
+                font-size: 11.5px;
+                color: Theme.grey;
+            }
+
+            Segmented {
+                items: ["Fabric", "Vanilla"];
+                current: root.vanilla ? 1 : 0;
+                segment: 80px;
+                tall: 32px;
+                changed(i) => { root.vanilla = i == 1; }
+            }
+        }
+    }
+
+    Rectangle {
+        border-radius: 12px;
+        background: Theme.well;
+
+        VerticalLayout {
+            padding: 14px;
+            spacing: 14px;
+
+            HorizontalLayout {
+                spacing: 12px;
+
+                VerticalLayout {
+                    alignment: center;
+                    horizontal-stretch: 1;
+                    spacing: 2px;
+                    Text {
+                        text: "Load CxVisuals";
+                        font-weight: 600;
+                        color: Theme.ink;
+                    }
+                    Text {
+                        text: root.vanilla ? "Needs the Fabric loader." : !root.fits && root.client ? "CxVisuals is made for Minecraft " + root.client-game + ". Pick that version or turn it off." : root.client ? "CxVisuals and Fabric API are added and kept up to date." : "Off. Only the mods you add.";
+                        font-size: 12px;
+                        color: !root.vanilla && !root.fits && root.client ? Theme.alert : Theme.grey;
+                        wrap: word-wrap;
+                    }
+                }
+
+                VerticalLayout {
+                    alignment: center;
+                    Toggle {
+                        checked: root.client && !root.vanilla;
+                        opacity: root.vanilla ? 0.4 : 1;
+                        toggled(on) => { root.client = on; }
+                    }
+                }
+            }
+
+            HorizontalLayout {
+                spacing: 12px;
+
+                VerticalLayout {
+                    alignment: center;
+                    horizontal-stretch: 1;
+                    Text {
+                        text: "Join a server on launch";
+                        color: Theme.ink;
+                    }
+                }
+
+                Select {
+                    options: root.data.servers;
+                    current: root.server;
+                    label: root.server == "" ? "No server" : root.server;
+                    menu-width: 260px;
+                    selected(id) => { root.server = id; }
+                }
+                Input {
+                    width: 160px;
+                    mono: true;
+                    icon: Icons.server;
+                    placeholder: "play.example.net";
+                    value: root.server;
+                    edited(t) => { root.server = t; }
+                }
+            }
+
+            HorizontalLayout {
+                spacing: 12px;
+
+                VerticalLayout {
+                    alignment: center;
+                    horizontal-stretch: 1;
+                    Text {
+                        text: "Fabric loader";
+                        color: Theme.ink;
+                    }
+                }
+
+                Input {
+                    width: 200px;
+                    mono: true;
+                    placeholder: "Latest";
+                    value: root.data.loader;
+                    edited(t) => { root.loader = t; }
+                }
+            }
+
+            HorizontalLayout {
+                spacing: 12px;
+                VerticalLayout {
+                    alignment: center;
+                    horizontal-stretch: 1;
+                    Text { text: "Java runtime"; color: Theme.ink; }
+                    Text { text: "Blank uses Settings default"; font-size: 11px; color: Theme.grey; }
+                }
+                Select {
+                    options: root.profile-javas;
+                    current: root.java;
+                    label: root.java == "" ? "Use Settings default" : "Custom Java";
+                    menu-width: 280px;
+                    selected(id) => { root.java = id; }
+                }
+            }
+
+            HorizontalLayout {
+                spacing: 12px;
+                VerticalLayout {
+                    alignment: center;
+                    horizontal-stretch: 1;
+                    Text { text: "Include snapshots"; color: Theme.ink; }
+                    Text { text: "Show snapshots and older versions in Minecraft picker"; font-size: 11px; color: Theme.grey; }
+                }
+                Toggle {
+                    checked: root.include-snapshots;
+                    toggled(on) => { root.include-snapshots = on; }
+                }
+            }
+        }
+    }
+
+    if root.data.id != "" && (root.worlds.length > 0 || root.shot-count > 0): Rectangle {
+        border-radius: 12px;
+        background: Theme.well;
+        clip: true;
+
+        VerticalLayout {
+            padding: 14px;
+            spacing: 12px;
+
+            if root.worlds.length > 0: VerticalLayout {
+                spacing: 8px;
+                Text {
+                    text: "Worlds";
+                    font-size: 11.5px;
+                    color: Theme.grey;
+                }
+                for w[i] in root.worlds: Rectangle {
+                    visible: i < 4;
+                    height: i < 4 ? 24px : 0;
+                    HorizontalLayout {
+                        spacing: 8px;
+                        Text {
+                            text: w.name;
+                            color: Theme.ink;
+                            font-size: 12px;
+                            vertical-alignment: center;
+                            overflow: elide;
+                            horizontal-stretch: 1;
+                        }
+                        Text {
+                            text: w.detail;
+                            color: Theme.grey;
+                            font-size: 11px;
+                            vertical-alignment: center;
+                        }
+                    }
+                }
+            }
+
+            if root.shot-count > 0: HorizontalLayout {
+                spacing: 8px;
+                height: 62px;
+                Text {
+                    text: "Screenshots";
+                    font-size: 11.5px;
+                    color: Theme.grey;
+                    vertical-alignment: center;
+                }
+                for s[i] in root.shots: Rectangle {
+                    visible: i < 5;
+                    width: i < 5 ? 88px : 0;
+                    height: i < 5 ? 50px : 0;
+                    border-radius: 8px;
+                    clip: true;
+                    background: Theme.surface-2;
+                    Image {
+                        source: s.thumb;
+                        image-fit: cover;
+                    }
+                    TouchArea {
+                        clicked => { root.command("open-shot:" + s.file); }
+                    }
+                }
+            }
+        }
+    }
+
+    HorizontalLayout {
+        spacing: 8px;
+
+        if root.data.id != "" && root.can-delete: Button {
+            text: root.confirm ? "Delete with worlds" : "Delete";
+            kind: "danger";
+            icon: Icons.trash;
+            clicked => {
+                if (root.confirm) {
+                    root.command("delete-profile:" + root.data.id);
+                } else {
+                    root.confirm = true;
+                }
+            }
+        }
+
+        if root.data.id != "": Button {
+            text: "Folder";
+            icon: Icons.folder;
+            clicked => { root.command("open-profile-folder:" + root.data.id); }
+        }
+
+        Rectangle { horizontal-stretch: 1; }
+
+        Button {
+            text: "Cancel";
+            clicked => { root.close(); }
+        }
+
+        Button {
+            text: root.data.id == "" ? "Create" : "Save";
+            kind: "primary";
+            clicked => {
+                root.save({
+                    id: root.data.id,
+                    name: root.name,
+                    glyph: root.glyph,
+                    game: root.game,
+                    vanilla: root.vanilla,
+                    client: root.client,
+                    server: root.server,
+                    loader: root.loader,
+                    pack: root.data.pack,
+                    java: root.java,
+                    servers: root.data.servers,
+                });
+            }
+        }
+    }
+}

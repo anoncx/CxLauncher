@@ -1,0 +1,253 @@
+import { Theme } from "theme.slint";
+import { Button, Card, Icon, Icons, Input, Scroll, Select, Spinner } from "components.slint";
+import { Command, FindItem } from "types.slint";
+
+export component Thumb inherits Rectangle {
+    in property <image> source;
+    in property <bool> has-image;
+    in property <string> letter;
+    in property <bool> managed;
+
+    width: 38px;
+    height: 38px;
+    border-radius: 10px;
+    background: root.managed ? Theme.accent.transparentize(0.86) : Theme.surface-2;
+    clip: true;
+
+    if root.has-image: Image {
+        width: parent.width;
+        height: parent.height;
+        source: root.source;
+        image-fit: cover;
+    }
+
+    if !root.has-image: Text {
+        text: root.letter;
+        font-family: Theme.dots;
+        font-weight: 900;
+        font-size: 20px;
+        color: root.managed ? Theme.accent : Theme.ink-2;
+    }
+}
+
+component FindRow inherits Rectangle {
+    in property <string> action: "Install";
+    in property <FindItem> item;
+    in property <bool> divider;
+    callback install();
+    callback open();
+
+    height: 72px;
+    background: hover.has-hover ? Theme.surface-2.transparentize(0.6) : transparent;
+    animate background { duration: Theme.quick; }
+
+    hover := TouchArea {
+        clicked => { root.open(); }
+    }
+
+    if root.divider: Rectangle {
+        x: 64px;
+        y: 0;
+        width: root.width - 64px;
+        height: 1px;
+        background: Theme.hair;
+    }
+
+    HorizontalLayout {
+        padding-left: 14px;
+        padding-right: 12px;
+        spacing: 12px;
+
+        VerticalLayout {
+            alignment: center;
+            Thumb {
+                source: root.item.icon;
+                has-image: root.item.has-icon;
+                letter: root.item.letter;
+            }
+        }
+
+        VerticalLayout {
+            alignment: center;
+            horizontal-stretch: 1;
+            spacing: 2px;
+
+            HorizontalLayout {
+                spacing: 8px;
+                Text {
+                    text: root.item.title;
+                    font-weight: 500;
+                    color: Theme.ink;
+                    overflow: elide;
+                }
+                Text {
+                    text: "by " + root.item.author + "  ·  " + root.item.downloads;
+                    font-size: 11px;
+                    color: Theme.grey;
+                    vertical-alignment: center;
+                    overflow: elide;
+                    horizontal-stretch: 1;
+                }
+            }
+
+            Text {
+                text: root.item.description;
+                font-size: 11.5px;
+                color: Theme.ink-2;
+                wrap: word-wrap;
+                overflow: elide;
+                height: min(self.preferred-height, 32px);
+            }
+        }
+
+        VerticalLayout {
+            alignment: center;
+            width: 96px;
+
+            if root.item.state == 0: Button {
+                text: root.action;
+                icon: Icons.download;
+                tall: 28px;
+                clicked => { root.install(); }
+            }
+
+            if root.item.state == 1: HorizontalLayout {
+                alignment: center;
+                Spinner { size: 16px; }
+            }
+
+            if root.item.state == 2: HorizontalLayout {
+                alignment: center;
+                spacing: 6px;
+                VerticalLayout {
+                    alignment: center;
+                    Icon {
+                        width: 13px;
+                        height: 13px;
+                        commands: Icons.check;
+                        tint: Theme.accent;
+                    }
+                }
+                Text {
+                    text: "Installed";
+                    font-size: 12px;
+                    color: Theme.grey;
+                    vertical-alignment: center;
+                }
+            }
+        }
+    }
+}
+
+export component FindList inherits VerticalLayout {
+    in property <[FindItem]> items;
+    in property <string> note;
+    in property <string> action: "Install";
+    callback install(string);
+    callback open(string);
+
+    if root.items.length > 0: Card {
+        height: hits.preferred-height;
+
+        Rectangle {
+            border-radius: Theme.radius;
+            clip: true;
+
+            hits := VerticalLayout {
+                for r[i] in root.items: FindRow {
+                    item: r;
+                    action: root.action;
+                    divider: i > 0;
+                    install => { root.install(r.id); }
+                    open => { root.open(r.id); }
+                }
+            }
+        }
+    }
+
+    if root.note != "": Text {
+        text: root.note;
+        color: Theme.grey;
+        font-size: 12.5px;
+        horizontal-alignment: center;
+        height: 80px;
+        vertical-alignment: center;
+        wrap: word-wrap;
+    }
+}
+
+export component SearchPane inherits Rectangle {
+    in property <[FindItem]> items;
+    in property <string> note;
+    in property <bool> searching;
+    in property <string> placeholder;
+    in property <string> action: "Install";
+    in property <[Command]> categories;
+    in property <string> category;
+    in property <[Command]> sorts;
+    in property <string> sort;
+    in-out property <string> query;
+    callback find(string, bool);
+    callback install(string);
+    callback open(string);
+    callback filter(string, string);
+
+    property <bool> filters: root.categories.length > 0;
+
+    HorizontalLayout {
+        y: 0;
+        height: 32px;
+        spacing: 10px;
+
+        Input {
+            horizontal-stretch: 1;
+            icon: Icons.search;
+            placeholder: root.placeholder;
+            text <=> root.query;
+            edited(text) => { root.find(text, false); }
+            accepted(text) => { root.find(text, true); }
+        }
+
+        if root.filters: VerticalLayout {
+            alignment: center;
+            Select {
+                options: root.categories;
+                current: root.category;
+                label: root.category == "" || root.category == "all" ? "Category" : root.category;
+                menu-width: 200px;
+                selected(id) => { root.filter(id, root.sort); }
+            }
+        }
+
+        if root.filters: VerticalLayout {
+            alignment: center;
+            Select {
+                options: root.sorts;
+                current: root.sort;
+                label: "Sort";
+                menu-width: 160px;
+                selected(id) => { root.filter(root.category, id); }
+            }
+        }
+
+        if root.searching: VerticalLayout {
+            alignment: center;
+            Spinner { }
+        }
+    }
+
+    Scroll {
+        y: 44px;
+        height: parent.height - 44px;
+        content-height: list.preferred-height + 4px;
+
+        list := FindList {
+            width: parent.width;
+            items: root.items;
+            note: root.note;
+            action: root.action;
+            install(id) => { root.install(id); }
+            open(id) => { root.open(id); }
+        }
+    }
+}

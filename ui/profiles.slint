@@ -1,0 +1,222 @@
+import { Theme } from "theme.slint";
+import { Button, Edge, Icon, IconButton, Icons, Scroll, Segmented } from "components.slint";
+import { SearchPane } from "rows.slint";
+import { Command, FindItem, ProfileItem } from "types.slint";
+
+component ProfileCard inherits Rectangle {
+    in property <ProfileItem> item;
+    callback command(string);
+
+    border-radius: Theme.radius;
+    background: Theme.surface;
+    border-width: root.item.active ? 1.5px : 0;
+    border-color: Theme.accent;
+    drop-shadow-blur: Theme.blur;
+    drop-shadow-offset-y: Theme.effects ? 4px : 0;
+    drop-shadow-color: Theme.lift;
+    transform-scale: touch.pressed ? 0.985 : 1;
+    animate transform-scale { duration: Theme.bounce; easing: cubic-bezier(0.34, 1.56, 0.64, 1); }
+
+    touch := TouchArea {
+        mouse-cursor: MouseCursor.pointer;
+        clicked => { root.command("profile:" + root.item.id); }
+    }
+
+    VerticalLayout {
+        padding: 16px;
+        spacing: 4px;
+
+        HorizontalLayout {
+            spacing: 10px;
+            padding-bottom: 8px;
+
+            Rectangle {
+                width: 40px;
+                height: 40px;
+                border-radius: 12px;
+                background: root.item.active ? Theme.accent : Theme.surface-2;
+                animate background { duration: Theme.quick; }
+
+                Icon {
+                    width: 18px;
+                    height: 18px;
+                    commands: Icons.glyphs[root.item.glyph];
+                    tint: root.item.active ? Theme.on-accent : Theme.ink-2;
+                }
+            }
+
+            Rectangle { horizontal-stretch: 1; }
+
+            VerticalLayout {
+                alignment: start;
+                IconButton {
+                    icon: Icons.edit;
+                    tip: "Edit profile";
+                    size: 28px;
+                    glyph: 14px;
+                    clicked => { root.command("edit-profile:" + root.item.id); }
+                }
+            }
+        }
+
+        Text {
+            text: root.item.name;
+            font-size: 15px;
+            font-weight: 600;
+            color: Theme.ink;
+            overflow: elide;
+        }
+
+        Text {
+            text: root.item.detail;
+            font-size: 12px;
+            color: Theme.ink-2;
+            overflow: elide;
+        }
+
+        Text {
+            text: root.item.pack != "" ? "Modpack  ·  " + root.item.pack : " ";
+            font-size: 11.5px;
+            color: Theme.grey;
+            overflow: elide;
+        }
+
+        Rectangle { vertical-stretch: 1; }
+
+        HorizontalLayout {
+            spacing: 8px;
+
+            Text {
+                text: root.item.stats;
+                font-size: 11.5px;
+                color: Theme.grey;
+                vertical-alignment: center;
+                overflow: elide;
+                horizontal-stretch: 1;
+            }
+
+            Button {
+                text: "Play";
+                icon: Icons.play;
+                tall: 28px;
+                kind: root.item.active ? "primary" : "quiet";
+                clicked => { root.command("play-profile:" + root.item.id); }
+            }
+        }
+    }
+
+    Edge { }
+}
+
+export component ProfilesPage inherits Rectangle {
+    in property <[ProfileItem]> profiles;
+    in-out property <int> tab;
+    in property <[FindItem]> packs;
+    in property <bool> searching;
+    in property <string> note;
+    callback command(string);
+    callback find(string, bool);
+    callback install(string);
+    callback open(string);
+    callback filter(string, string);
+    in property <[Command]> categories;
+    in property <[Command]> sorts;
+    in-out property <string> category: "all";
+    in-out property <string> sort: "relevance";
+
+    property <string> query;
+
+    VerticalLayout {
+        padding-left: 8px;
+        padding-right: 8px;
+        spacing: 14px;
+
+        HorizontalLayout {
+            spacing: 10px;
+            height: 44px;
+
+            VerticalLayout {
+                alignment: center;
+                horizontal-stretch: 1;
+                Text {
+                    text: "Profiles";
+                    font-size: 22px;
+                    font-weight: 600;
+                    color: Theme.ink;
+                }
+                Text {
+                    text: "Each profile has its own Minecraft version, loader, mods and worlds";
+                    font-size: 12px;
+                    color: Theme.grey;
+                    overflow: elide;
+                }
+            }
+
+            VerticalLayout {
+                alignment: center;
+                Segmented {
+                    items: ["Library", "Modpacks"];
+                    current <=> root.tab;
+                    segment: 96px;
+                }
+            }
+
+            VerticalLayout {
+                alignment: center;
+                Button {
+                    text: "Import";
+                    icon: Icons.download;
+                    clicked => { root.command("import-pack"); }
+                }
+            }
+
+            VerticalLayout {
+                alignment: center;
+                Button {
+                    text: "New profile";
+                    icon: Icons.plus;
+                    kind: "primary";
+                    clicked => { root.command("new-profile"); }
+                }
+            }
+        }
+
+        Rectangle {
+            vertical-stretch: 1;
+
+            if root.tab == 0: grid := Scroll {
+                property <length> gap: 12px;
+                property <int> cols: Math.max(1, Math.floor((self.width - 8px + gap) / (280px + gap)));
+                property <length> card-width: (self.width - 8px - (cols - 1) * gap) / cols;
+                property <length> card-height: 172px;
+                content-height: Math.ceil(root.profiles.length / cols) * (card-height + gap) + 8px;
+
+                for p[i] in root.profiles: ProfileCard {
+                    x: Math.mod(i, grid.cols) * (grid.card-width + grid.gap);
+                    y: Math.floor(i / grid.cols) * (grid.card-height + grid.gap);
+                    width: grid.card-width;
+                    height: grid.card-height;
+                    item: p;
+                    command(id) => { root.command(id); }
+                }
+            }
+
+            if root.tab == 1: SearchPane {
+                items: root.packs;
+                note: root.note;
+                searching: root.searching;
+                placeholder: "Search Modrinth for Fabric modpacks";
+                action: "Get";
+                query <=> root.query;
+                find(q, now) => { root.find(q, now); }
+                install(id) => { root.install(id); }
+                open(id) => { root.open(id); }
+                category <=> root.category;
+                sort <=> root.sort;
+                categories: root.categories;
+                sorts: root.sorts;
+                filter(cat, order) => { root.category = cat; root.sort = order; root.command("filter-packs:" + cat + "|" + order); }
+            }
+        }
+    }
+}

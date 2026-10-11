@@ -1,0 +1,148 @@
+export struct NavItem {
+    id: string,
+    label: string,
+    icon: string,
+}
+
+export struct Command {
+    id: string,
+    title: string,
+    detail: string,
+}
+
+export struct AccountItem {
+    uuid: string,
+    name: string,
+    head: image,
+    active: bool,
+}
+
+export struct ProfileItem {
+    id: string,
+    name: string,
+    glyph: int,
+    detail: string,
+    stats: string,
+    pack: string,
+    active: bool,
+}
+
+export struct ModItem {
+    file: string,
+    name: string,
+    version: string,
+    detail: string,
+    icon: image,
+    has-icon: bool,
+    letter: string,
+    enabled: bool,
+    managed: bool,
+}
+
+export struct FindItem {
+    id: string,
+    title: string,
+    author: string,
+    description: string,
+    downloads: string,
+    icon: image,
+    has-icon: bool,
+    letter: string,
+    state: int,
+}
+
+export struct ModLink {
+    label: string,
+    url: string,
+}
+
+export struct ModImage {
+    image: image,
+    has-image: bool,
+    title: string,
+}
+
+export struct VersionPick {
+    id: string,
+    title: string,
+}
+
+export struct ModDetail {
+    id: string,
+    slug: string,
+    title: string,
+    author: string,
+    description: string,
+    body: string,
+    downloads: string,
+    followers: string,
+    license: string,
+    project-type: string,
+    categories: string,
+    client-side: string,
+    server-side: string,
+    updated: string,
+    icon: image,
+    has-icon: bool,
+    letter: string,
+    state: int,
+    loading: bool,
+    gallery-count: int,
+    links: [ModLink],
+    gallery: [ModImage],
+}
+
+export struct LogLine {
+    level: int,
+    text: string,
+}
+
+export struct JavaItem {
+    path: string,
+    label: string,
+}
+
+export struct ProfileEdit {
+    id: string,
+    name: string,
+    glyph: int,
+    game: string,
+    vanilla: bool,
+    client: bool,
+    server: string,
+    loader: string,
+    pack: string,
+    java: string,
+    servers: [Command],
+}
+
+export struct WorldItem {
+    folder: string,
+    name: string,
+    detail: string,
+}
+
+export struct ShotItem {
+    file: string,
+    thumb: image,
+}
+
+export struct SettingsView {
+    memory: int,
+    memory-max: int,
+    memory-recommended: int,
+    java: string,
+    java-label: string,
+    jvm-args: string,
+    collector: int,
+    width: string,
+    height: string,
+    fullscreen: bool,
+    after-launch: int,
+    threads: int,
+    local: bool,
+    local-jar: string,
+    data-dir: string,
+    version: string,
+    machine: string,
+}

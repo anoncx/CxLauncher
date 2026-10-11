@@ -1,0 +1,1112 @@
+import { Theme } from "theme.slint";
+import { Command } from "types.slint";
+
+export global Icons {
+    out property <string> play: "M8 5.5v13l10.5-6.5z";
+    out property <string> mods: "M4 8l8-4 8 4-8 4zM4 8v8l8 4 8-4V8M12 12v8";
+    out property <string> profiles: "M12 4l8 4-8 4-8-4zM4 12l8 4 8-4M4 16l8 4 8-4";
+    out property <string> console: "M4 5h16v14H4zM8 10l3 2-3 2M13 15h3";
+    out property <string> settings: "M4 7h9M17 7h3M4 17h3M11 17h9M15 5v4M9 15v4";
+    out property <string> plus: "M12 5v14M5 12h14";
+    out property <string> folder: "M4 7h6l2 2h8v10H4z";
+    out property <string> check: "M5 12l5 5 9-10";
+    out property <string> close: "M6 6l12 12M18 6L6 18";
+    out property <string> down: "M6 9l6 6 6-6";
+    out property <string> right: "M9 6l6 6-6 6";
+    out property <string> search: "M10.5 4a6.5 6.5 0 1 0 0 13a6.5 6.5 0 1 0 0 -13M15.5 15.5L20 20";
+    out property <string> trash: "M5 7h14M10 7V5h4v2M7 7l1 13h8l1-13";
+    out property <string> copy: "M8 8h11v11h-11zM5 15h-1v-11h11v1";
+    out property <string> stop: "M7 7h10v10H7z";
+    out property <string> external: "M14 4h6v6M20 4l-9 9M18 14v6H4V6h6";
+    out property <string> bolt: "M13 3L5 14h6l-1 7 8-11h-6z";
+    out property <string> user: "M12 12a4 4 0 1 0 0-8a4 4 0 1 0 0 8M4 20c1.5-4 4.5-6 8-6s6.5 2 8 6";
+    out property <string> download: "M12 4v11M7 10l5 5 5-5M5 20h14";
+    out property <string> repair: "M20 11a8 8 0 1 0-2.3 5.7M20 5v6h-6";
+    out property <string> signout: "M15 4h4v16h-4M10 8l-4 4 4 4M6 12h10";
+    out property <string> server: "M4 5h16v6H4zM4 13h16v6H4zM8 8h.5M8 16h.5";
+    out property <string> edit: "M4 20h4L19 9l-4-4L4 16zM14 6l4 4";
+    out property <string> warn: "M12 4l9 16H3zM12 10v4M12 17v.5";
+    out property <string> lock: "M6 11h12v9H6zM9 11V8a3 3 0 0 1 6 0v3";
+    out property <[string]> glyphs: [
+        "M12 3l8 4.5v9L12 21l-8-4.5v-9zM12 12l8-4.5M12 12v9M12 12L4 7.5",
+        "M14.5 4H20v5.5L9 20.5L3.5 15zM6 12l6 6M4 20l2-2",
+        "M12 20s-7-4.5-7-10a4 4 0 0 1 7-2.5A4 4 0 0 1 19 10c0 5.5-7 10-7 10z",
+        "M12 3.5l2.6 5.3 5.9.9-4.25 4.1 1 5.8L12 16.9l-5.25 2.7 1-5.8L3.5 9.7l5.9-.9z",
+        "M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z",
+        "M13 3L5 14h6l-1 7 8-11h-6z",
+    ];
+}
+
+export component Icon inherits Path {
+    in property <color> tint: Theme.grey;
+    in property <bool> solid;
+    width: 16px;
+    height: 16px;
+    viewbox-width: 24;
+    viewbox-height: 24;
+    stroke: tint;
+    stroke-width: 1.7px;
+    stroke-line-cap: round;
+    stroke-line-join: round;
+    fill: solid ? tint : transparent;
+    animate stroke, fill { duration: Theme.quick; }
+}
+
+export component Edge inherits Rectangle {
+    in property <length> inset: Theme.radius;
+
+    y: 0;
+    height: 1px;
+
+    Rectangle {
+        x: root.inset;
+        width: root.width - 2 * root.inset;
+        background: @linear-gradient(90deg, Theme.edge.transparentize(1) 0%, Theme.edge 18%, Theme.edge 82%, Theme.edge.transparentize(1) 100%);
+    }
+}
+
+export global Hint {
+    in-out property <string> text;
+    in-out property <string> side: "bottom";
+    in-out property <length> x;
+    in-out property <length> y;
+    in-out property <bool> shown;
+}
+
+export component TipTrigger inherits Rectangle {
+    in property <bool> active;
+    in property <string> text;
+    in property <string> side: "bottom";
+
+    property <bool> armed;
+
+    changed active => {
+        if (!root.active) {
+            root.armed = false;
+            if (Hint.text == root.text) {
+                Hint.shown = false;
+            }
+        }
+    }
+
+    public function dismiss() {
+        root.armed = true;
+        if (Hint.text == root.text) {
+            Hint.shown = false;
+        }
+    }
+
+    Timer {
+        interval: 450ms;
+        running: root.active && !root.armed && root.text != "";
+        triggered => {
+            root.armed = true;
+            Hint.text = root.text;
+            Hint.side = root.side;
+            Hint.x = root.absolute-position.x + root.width / 2;
+            Hint.y = root.side == "top" ? root.absolute-position.y : root.absolute-position.y + root.height;
+            Hint.shown = true;
+        }
+    }
+}
+
+export component TipLayer inherits Rectangle {
+    property <length> gap: 8px;
+
+    Rectangle {
+        width: label.preferred-width + 16px;
+        height: 24px;
+        x: max(6px, min(root.width - self.width - 6px, Hint.x - self.width / 2));
+        y: max(6px, min(root.height - self.height - 6px, Hint.side == "top" ? Hint.y - self.height - root.gap : Hint.y + root.gap));
+        border-radius: 7px;
+        background: Theme.ink;
+        opacity: Hint.shown ? 1 : 0;
+        transform-scale: Hint.shown ? 1 : 0.92;
+        animate opacity { duration: 140ms; }
+        animate transform-scale { duration: Theme.bounce; easing: cubic-bezier(0.34, 1.56, 0.64, 1); }
+
+        label := Text {
+            text: Hint.text;
+            color: Theme.paper;
+            font-size: 11.5px;
+            font-weight: 500;
+        }
+    }
+}
+
+export component IconButton inherits Rectangle {
+    in property <string> icon;
+    in property <string> tip;
+    in property <string> tip-side: "bottom";
+    in property <bool> enabled: true;
+    in property <bool> active;
+    in property <bool> danger;
+    in property <length> size: 30px;
+    in property <length> glyph: 16px;
+    callback clicked();
+
+    width: size;
+    height: size;
+    border-radius: self.height / 2;
+    background: active ? Theme.ink : touch.has-hover && enabled ? Theme.surface-2 : transparent;
+    opacity: enabled ? 1 : 0.35;
+    transform-scale: touch.pressed && enabled ? 0.9 : 1;
+    accessible-role: button;
+    accessible-label: tip;
+    accessible-action-default => { if (root.enabled) { root.clicked(); } }
+    animate background { duration: Theme.quick; }
+    animate transform-scale { duration: Theme.bounce; easing: cubic-bezier(0.34, 1.56, 0.64, 1); }
+
+    touch := TouchArea {
+        mouse-cursor: root.enabled ? MouseCursor.pointer : MouseCursor.default;
+        clicked => {
+            trigger.dismiss();
+            if (root.enabled) {
+                root.clicked();
+            }
+        }
+    }
+
+    trigger := TipTrigger {
+        active: touch.has-hover;
+        text: root.tip;
+        side: root.tip-side;
+    }
+
+    Icon {
+        width: root.glyph;
+        height: root.glyph;
+        commands: root.icon;
+        tint: root.active ? Theme.paper : root.danger && touch.has-hover ? Theme.alert : touch.has-hover ? Theme.ink : Theme.ink-2;
+    }
+}
+
+export component Toggle inherits Rectangle {
+    in-out property <bool> checked;
+    callback toggled(bool);
+
+    width: 38px;
+    height: 23px;
+    border-radius: self.height / 2;
+    background: checked ? Theme.accent : Theme.surface-2;
+    accessible-role: checkbox;
+    accessible-checkable: true;
+    accessible-checked: checked;
+    accessible-action-default => { self.flip(); }
+    transform-scale: touch.pressed ? 0.94 : 1;
+    animate background { duration: Theme.calm ? 0ms : 250ms; easing: cubic-bezier(0.2, 0.8, 0.2, 1); }
+    animate transform-scale { duration: Theme.bounce; easing: cubic-bezier(0.34, 1.56, 0.64, 1); }
+
+    function flip() {
+        root.checked = !root.checked;
+        root.toggled(root.checked);
+    }
+
+    touch := TouchArea {
+        mouse-cursor: MouseCursor.pointer;
+        clicked => { root.flip(); }
+    }
+
+    Rectangle {
+        y: 2.5px;
+        height: 18px;
+        width: touch.pressed ? 23px : 18px;
+        x: root.checked ? root.width - self.width - 2.5px : 2.5px;
+        border-radius: 9px;
+        background: Theme.accent-index == 6 && root.checked ? Theme.paper : #ffffff;
+        drop-shadow-blur: 3px;
+        drop-shadow-offset-y: 1px;
+        drop-shadow-color: #00000033;
+        animate x { duration: Theme.calm ? 0ms : 340ms; easing: cubic-bezier(0.34, 1.56, 0.64, 1); }
+        animate width { duration: Theme.quick; easing: cubic-bezier(0.2, 0.8, 0.2, 1); }
+    }
+}
+
+export component Segmented inherits Rectangle {
+    in property <[string]> items;
+    in property <[string]> icons;
+    in-out property <int> current;
+    in property <length> segment: 80px;
+    in property <length> tall: 30px;
+    callback changed(int);
+
+    property <bool> pressing;
+
+    width: segment * items.length + 6px;
+    height: tall;
+    border-radius: self.height / 2;
+    background: Theme.surface-2;
+
+    Rectangle {
+        x: 3px + root.current * root.segment;
+        y: 3px;
+        width: root.segment;
+        height: root.height - 6px;
+        border-radius: self.height / 2;
+        background: Theme.raised;
+        drop-shadow-blur: 3px;
+        drop-shadow-offset-y: 1px;
+        drop-shadow-color: Theme.shadow;
+        transform-scale: root.pressing ? 0.95 : 1;
+        animate x { duration: Theme.smooth; easing: cubic-bezier(0.34, 1.56, 0.64, 1); }
+        animate transform-scale { duration: Theme.bounce; easing: cubic-bezier(0.34, 1.56, 0.64, 1); }
+
+        Edge {
+            inset: parent.height / 2;
+        }
+    }
+
+    for item[i] in root.items: Rectangle {
+        x: 3px + i * root.segment;
+        y: 3px;
+        width: root.segment;
+        height: root.height - 6px;
+        accessible-role: tab;
+        accessible-label: item;
+        accessible-action-default => { root.current = i; root.changed(i); }
+
+        touch := TouchArea {
+            mouse-cursor: MouseCursor.pointer;
+            changed pressed => { root.pressing = self.pressed; }
+            clicked => {
+                root.current = i;
+                root.changed(i);
+            }
+        }
+
+        HorizontalLayout {
+            alignment: center;
+            spacing: 6px;
+            transform-scale: touch.pressed ? 0.93 : 1;
+            animate transform-scale { duration: Theme.quick; easing: cubic-bezier(0.2, 0.8, 0.2, 1); }
+
+            if root.icons.length > i: VerticalLayout {
+                alignment: center;
+                Icon {
+                    width: 14px;
+                    height: 14px;
+                    commands: root.icons[i];
+                    tint: root.current == i ? Theme.accent : Theme.grey;
+                }
+            }
+
+            Text {
+                text: item;
+                font-weight: 500;
+                font-size: 12.5px;
+                vertical-alignment: center;
+                color: root.current == i ? Theme.ink : Theme.grey;
+                animate color { duration: 200ms; }
+            }
+        }
+    }
+}
+
+export component Button inherits Rectangle {
+    in property <string> text;
+    in property <string> kind: "quiet";
+    in property <string> icon;
+    in property <bool> enabled: true;
+    in property <length> tall: 32px;
+    callback clicked();
+
+    property <color> face: kind == "primary" ? Theme.ink : kind == "accent" ? Theme.accent : touch.has-hover ? Theme.surface-2.darker(Theme.dark ? -0.15 : 0.04) : Theme.surface-2;
+    property <color> label: kind == "primary" ? Theme.paper : kind == "accent" ? Theme.on-accent : kind == "danger" ? Theme.alert : Theme.ink;
+
+    height: tall;
+    horizontal-stretch: 0;
+    border-radius: self.height / 2;
+    background: face;
+    opacity: enabled ? 1 : 0.4;
+    accessible-role: button;
+    accessible-label: text;
+    accessible-action-default => { if (root.enabled) { root.clicked(); } }
+    transform-scale: touch.pressed && enabled ? 0.95 : 1;
+    animate transform-scale { duration: Theme.quick; easing: cubic-bezier(0.2, 0.8, 0.2, 1); }
+    animate background { duration: Theme.quick; }
+
+    touch := TouchArea {
+        enabled: root.enabled;
+        mouse-cursor: root.enabled ? MouseCursor.pointer : MouseCursor.default;
+        clicked => { root.clicked(); }
+    }
+
+    HorizontalLayout {
+        alignment: center;
+        padding-left: root.text != "" ? 15px : 9px;
+        padding-right: root.text != "" ? 15px : 9px;
+        spacing: root.icon != "" && root.text != "" ? 7px : 0;
+
+        VerticalLayout {
+            alignment: center;
+            Icon {
+                commands: root.icon;
+                width: root.icon != "" ? 14px : 0;
+                height: 14px;
+                visible: root.icon != "";
+                tint: root.label;
+            }
+        }
+
+        Text {
+            text: root.text;
+            font-weight: 500;
+            vertical-alignment: center;
+            color: root.label;
+        }
+    }
+}
+
+export component Input inherits Rectangle {
+    in-out property <string> text;
+    in property <string> value;
+    in property <string> placeholder;
+    in property <bool> mono;
+    in property <string> icon;
+    out property <bool> focused: field.has-focus;
+    callback edited(string);
+    callback accepted(string);
+
+    height: 32px;
+    min-width: 60px;
+    clip: true;
+    border-radius: 9px;
+    border-width: 1px;
+    border-color: field.has-focus ? Theme.focus : transparent;
+    background: field.has-focus ? Theme.surface : Theme.surface-2;
+    animate background, border-color { duration: Theme.quick; }
+
+    public function focus-field() {
+        field.focus();
+    }
+
+    init => { if (root.value != "") { root.text = root.value; } }
+    changed value => {
+        if (root.text != root.value) {
+            root.text = root.value;
+        }
+    }
+
+    property <length> lead: root.icon != "" ? 30px : 10px;
+
+    area := TouchArea {
+        mouse-cursor: MouseCursor.text;
+        clicked => { field.focus(); }
+    }
+
+    if root.icon != "": Icon {
+        x: 10px;
+        width: 14px;
+        height: 14px;
+        commands: root.icon;
+    }
+
+    if root.text == "": Text {
+        x: root.lead;
+        text: root.placeholder;
+        color: Theme.grey;
+        font-family: root.mono ? Theme.mono : Theme.sans;
+        font-size: root.mono ? 11.5px : 12.5px;
+        vertical-alignment: center;
+    }
+
+    field := TextInput {
+        x: root.lead;
+        width: root.width - root.lead - 10px;
+        text <=> root.text;
+        single-line: true;
+        vertical-alignment: center;
+        color: Theme.ink;
+        font-family: root.mono ? Theme.mono : Theme.sans;
+        font-size: root.mono ? 11.5px : 12.5px;
+        selection-background-color: Theme.focus;
+        edited => { root.edited(self.text); }
+        accepted => { root.accepted(self.text); }
+    }
+}
+
+export component Popover inherits Rectangle {
+    border-radius: 12px;
+    background: Theme.surface;
+    border-width: 1px;
+    border-color: Theme.hair;
+    drop-shadow-blur: 28px;
+    drop-shadow-offset-y: 10px;
+    drop-shadow-color: Theme.shadow;
+
+    VerticalLayout {
+        padding: 5px;
+        @children
+    }
+}
+
+export component MenuDivider inherits Rectangle {
+    height: 9px;
+
+    Rectangle {
+        x: 8px;
+        width: parent.width - 16px;
+        height: 1px;
+        background: Theme.hair;
+    }
+}
+
+export component MenuAction inherits Rectangle {
+    in property <string> icon;
+    in property <string> title;
+    callback clicked();
+
+    height: 30px;
+    border-radius: 7px;
+    background: touch.has-hover ? Theme.surface-2 : transparent;
+
+    touch := TouchArea {
+        mouse-cursor: MouseCursor.pointer;
+        clicked => { root.clicked(); }
+    }
+
+    HorizontalLayout {
+        padding-left: 10px;
+        padding-right: 10px;
+        spacing: 10px;
+
+        VerticalLayout {
+            alignment: center;
+            Icon {
+                width: 14px;
+                height: 14px;
+                commands: root.icon;
+            }
+        }
+
+        Text {
+            text: root.title;
+            font-size: 12.5px;
+            color: Theme.ink;
+            vertical-alignment: center;
+            overflow: elide;
+            horizontal-stretch: 1;
+        }
+    }
+}
+
+export component MenuPick inherits Rectangle {
+    in property <string> title;
+    in property <string> detail;
+    in property <bool> active;
+    callback clicked();
+
+    height: 44px;
+    border-radius: 8px;
+    background: touch.has-hover ? Theme.surface-2 : transparent;
+
+    touch := TouchArea {
+        mouse-cursor: MouseCursor.pointer;
+        clicked => { root.clicked(); }
+    }
+
+    HorizontalLayout {
+        padding-left: 10px;
+        padding-right: 10px;
+        spacing: 10px;
+
+        VerticalLayout {
+            alignment: center;
+            @children
+        }
+
+        VerticalLayout {
+            alignment: center;
+            horizontal-stretch: 1;
+
+            Text {
+                text: root.title;
+                font-size: 12.5px;
+                font-weight: 500;
+                color: Theme.ink;
+                overflow: elide;
+            }
+
+            Text {
+                text: root.detail;
+                font-size: 11px;
+                color: Theme.grey;
+                overflow: elide;
+            }
+        }
+
+        VerticalLayout {
+            alignment: center;
+            Icon {
+                width: root.active ? 13px : 0;
+                height: 13px;
+                visible: root.active;
+                commands: Icons.check;
+                tint: Theme.accent;
+            }
+        }
+    }
+}
+
+export component MenuSheet inherits Popover {
+    in property <[Command]> items;
+    in property <string> current;
+    callback chosen(string);
+
+    for item in root.items: Rectangle {
+        height: item.id == "-" ? 9px : item.detail != "" ? 40px : 30px;
+        border-radius: 7px;
+        background: row.has-hover && item.id != "-" ? Theme.surface-2 : transparent;
+
+        if item.id == "-": MenuDivider { }
+
+        row := TouchArea {
+            enabled: item.id != "-";
+            mouse-cursor: MouseCursor.pointer;
+            clicked => { root.chosen(item.id); }
+        }
+
+        if item.id != "-": HorizontalLayout {
+            padding-left: 10px;
+            padding-right: 10px;
+            spacing: 10px;
+
+            VerticalLayout {
+                alignment: center;
+                horizontal-stretch: 1;
+
+                Text {
+                    text: item.title;
+                    font-size: 12.5px;
+                    color: Theme.ink;
+                    overflow: elide;
+                }
+
+                if item.detail != "": Text {
+                    text: item.detail;
+                    font-size: 11px;
+                    color: Theme.grey;
+                    overflow: elide;
+                }
+            }
+
+            VerticalLayout {
+                alignment: center;
+                Icon {
+                    width: item.id == root.current ? 13px : 0;
+                    height: 13px;
+                    visible: item.id == root.current;
+                    tint: Theme.accent;
+                    commands: Icons.check;
+                }
+            }
+        }
+    }
+}
+
+export component Select inherits Rectangle {
+    in property <[Command]> options;
+    in property <string> current;
+    in property <string> label;
+    in property <length> menu-width: 220px;
+    callback selected(string);
+
+    height: 32px;
+    min-width: text.preferred-width + 44px;
+    border-radius: 9px;
+    background: touch.has-hover ? Theme.surface : Theme.surface-2;
+    border-width: 1px;
+    border-color: touch.has-hover ? Theme.hair : transparent;
+    accessible-role: combobox;
+    accessible-value: root.label;
+    transform-scale: touch.pressed ? 0.96 : 1;
+    animate background { duration: Theme.quick; }
+    animate transform-scale { duration: Theme.bounce; easing: cubic-bezier(0.34, 1.56, 0.64, 1); }
+
+    touch := TouchArea {
+        mouse-cursor: MouseCursor.pointer;
+        clicked => { menu.show(); }
+    }
+
+    text := Text {
+        x: 10px;
+        width: root.width - 34px;
+        text: root.label;
+        font-weight: 500;
+        font-size: 12.5px;
+        overflow: elide;
+        color: Theme.ink;
+    }
+
+    Icon {
+        x: root.width - 21px;
+        width: 12px;
+        height: 12px;
+        commands: Icons.down;
+    }
+
+    menu := PopupWindow {
+        x: 0;
+        y: root.height + 4px;
+        width: max(root.width, root.menu-width);
+
+        MenuSheet {
+            items: root.options;
+            current: root.current;
+            chosen(id) => { root.selected(id); }
+        }
+    }
+}
+
+export component GroupLabel inherits Text {
+    height: 30px;
+    vertical-alignment: bottom;
+    color: Theme.grey;
+    font-size: 11.5px;
+    font-weight: 500;
+}
+
+export component Card inherits Rectangle {
+    in property <length> corner: Theme.radius;
+    border-radius: corner;
+    background: Theme.surface;
+    drop-shadow-blur: Theme.blur;
+    drop-shadow-offset-y: Theme.effects ? 4px : 0;
+    drop-shadow-color: Theme.lift;
+
+    @children
+
+    Edge { inset: root.corner; }
+}
+
+export component Group inherits Card {
+    Rectangle {
+        border-radius: Theme.radius;
+        clip: true;
+
+        VerticalLayout {
+            @children
+        }
+    }
+}
+
+export component Row inherits Rectangle {
+    in property <string> title;
+    in property <string> detail;
+    in property <bool> divider: true;
+
+    min-height: detail != "" ? 52px : 44px;
+
+    if root.divider: Rectangle {
+        x: 14px;
+        y: 0;
+        width: root.width - 14px;
+        height: 1px;
+        background: Theme.hair;
+    }
+
+    HorizontalLayout {
+        padding-left: 14px;
+        padding-right: 12px;
+        padding-top: 7px;
+        padding-bottom: 7px;
+        spacing: 12px;
+
+        VerticalLayout {
+            alignment: center;
+            horizontal-stretch: 1;
+            spacing: 1px;
+
+            Text {
+                text: root.title;
+                font-size: 12.5px;
+                color: Theme.ink;
+                overflow: elide;
+            }
+
+            if root.detail != "": Text {
+                text: root.detail;
+                font-size: 11.5px;
+                color: Theme.grey;
+                wrap: word-wrap;
+            }
+        }
+
+        HorizontalLayout {
+            alignment: end;
+            spacing: 6px;
+            horizontal-stretch: 0;
+
+            VerticalLayout {
+                alignment: center;
+                @children
+            }
+        }
+    }
+}
+
+export component Swatches inherits HorizontalLayout {
+    in property <[color]> colors;
+    in property <[string]> names;
+    in property <int> current;
+    callback picked(int);
+
+    spacing: 8px;
+    alignment: end;
+
+    for c[i] in root.colors: Rectangle {
+        width: 20px;
+        height: 20px;
+        border-radius: 10px;
+        background: i == 6 ? Theme.ink : c;
+        accessible-role: button;
+        accessible-label: root.names[i];
+        transform-scale: touch.pressed ? 0.85 : touch.has-hover ? 1.12 : 1;
+        animate transform-scale { duration: Theme.bounce; easing: cubic-bezier(0.34, 1.56, 0.64, 1); }
+
+        Rectangle {
+            width: parent.width + 7px;
+            height: parent.height + 7px;
+            border-radius: self.height / 2;
+            border-width: 1.5px;
+            border-color: i == root.current ? Theme.ink : transparent;
+            animate border-color { duration: Theme.quick; }
+        }
+
+        touch := TouchArea {
+            mouse-cursor: MouseCursor.pointer;
+            clicked => { root.picked(i); }
+        }
+
+        TipTrigger {
+            active: touch.has-hover;
+            text: root.names[i];
+        }
+    }
+}
+
+export component Slider inherits Rectangle {
+    in property <float> minimum: 0;
+    in property <float> maximum: 100;
+    in property <float> step: 1;
+    in property <float> mark: -1;
+    in-out property <float> value;
+    callback changed(float);
+    callback released(float);
+
+    property <float> span: max(1, root.maximum - root.minimum);
+    property <float> ratio: (root.value - root.minimum) / span;
+
+    height: 24px;
+    min-width: 120px;
+    accessible-role: slider;
+    accessible-value: root.value;
+
+    function set-from(x: length) {
+        let raw = root.minimum + max(0, min(1, x / root.width)) * span;
+        let snapped = Math.round(raw / root.step) * root.step;
+        if (snapped != root.value) {
+            root.value = snapped;
+            root.changed(snapped);
+        }
+    }
+
+    Rectangle {
+        y: (parent.height - self.height) / 2;
+        height: 4px;
+        border-radius: 2px;
+        background: Theme.surface-2;
+    }
+
+    Rectangle {
+        x: 0;
+        y: (parent.height - self.height) / 2;
+        width: root.ratio * root.width;
+        height: 4px;
+        border-radius: 2px;
+        background: Theme.accent;
+    }
+
+    if root.mark >= root.minimum: Rectangle {
+        x: (root.mark - root.minimum) / span * root.width - 1px;
+        y: (parent.height - self.height) / 2 - 5px;
+        width: 2px;
+        height: 4px;
+        border-radius: 1px;
+        background: Theme.grey;
+    }
+
+    knob := Rectangle {
+        x: root.ratio * (root.width - self.width);
+        y: (parent.height - self.height) / 2;
+        width: touch.pressed ? 22px : 18px;
+        height: self.width;
+        border-radius: self.width / 2;
+        background: #ffffff;
+        drop-shadow-blur: 4px;
+        drop-shadow-offset-y: 1px;
+        drop-shadow-color: #00000040;
+        animate width { duration: Theme.quick; easing: cubic-bezier(0.34, 1.56, 0.64, 1); }
+    }
+
+    touch := TouchArea {
+        mouse-cursor: MouseCursor.pointer;
+        pointer-event(e) => {
+            if (e.kind == PointerEventKind.down) {
+                root.set-from(self.mouse-x);
+            }
+            if (e.kind == PointerEventKind.up) {
+                root.released(root.value);
+            }
+        }
+        moved => { root.set-from(self.mouse-x); }
+    }
+}
+
+export component Roll inherits Rectangle {
+    in property <int> value;
+    in property <int> digits: 3;
+    in property <length> size: 13px;
+    in property <color> tint: Theme.ink;
+    in property <string> family: Theme.mono;
+    in property <bool> pad;
+
+    property <length> line: root.size * 1.25;
+    property <length> cell: root.size * 0.62;
+    property <int> shown: Math.max(1, Math.min(root.digits, root.value <= 0 ? 1 : Math.floor(Math.log(root.value, 10)) + 1));
+    property <int> count: root.pad ? root.digits : shown;
+
+    width: count * cell;
+    height: line;
+    clip: true;
+
+    for d in root.count: Rectangle {
+        property <int> place: root.count - 1 - d;
+        property <int> digit: Math.mod(Math.floor(root.value / Math.pow(10, place)), 10);
+        x: d * root.cell;
+        width: root.cell;
+        height: root.line;
+
+        VerticalLayout {
+            y: -parent.digit * root.line;
+            animate y { duration: Theme.calm ? 0ms : 420ms; easing: cubic-bezier(0.34, 1.3, 0.64, 1); }
+
+            for n in 10: Text {
+                height: root.line;
+                text: n;
+                font-family: root.family;
+                font-size: root.size;
+                color: root.tint;
+                horizontal-alignment: center;
+                vertical-alignment: center;
+            }
+        }
+    }
+}
+
+export component Dots inherits Rectangle {
+    in property <float> progress;
+    in property <bool> busy;
+    in property <int> count: 32;
+    in property <length> dot: 5px;
+    in property <length> gap: 4px;
+
+    property <int> lit: Math.round(Math.max(0, Math.min(1, root.progress)) * root.count);
+    property <int> sweep;
+
+    width: count * (dot + gap) - gap;
+    height: dot;
+
+    Timer {
+        interval: 70ms;
+        running: root.busy && !Theme.calm;
+        triggered => { root.sweep = Math.mod(root.sweep + 1, root.count * 2 - 2); }
+    }
+
+    for i in root.count: Rectangle {
+        property <int> head: root.sweep < root.count ? root.sweep : root.count * 2 - 2 - root.sweep;
+        property <bool> on: root.busy ? Math.abs(i - head) < 3 : i < root.lit;
+        property <bool> lead: root.busy ? i == head : i == root.lit - 1 && root.progress < 1;
+        x: i * (root.dot + root.gap);
+        width: root.dot;
+        height: root.dot;
+        border-radius: root.dot / 2;
+        background: lead ? Theme.accent : on ? Theme.ink : Theme.dot-off;
+        animate background { duration: Theme.calm ? 0ms : 120ms; }
+    }
+}
+
+export component Spinner inherits Rectangle {
+    in property <bool> running: true;
+    in property <length> size: 18px;
+    property <int> step;
+
+    width: size;
+    height: size;
+
+    Timer {
+        interval: 90ms;
+        running: root.running && !Theme.calm;
+        triggered => { root.step = Math.mod(root.step + 1, 8); }
+    }
+
+    for i in 8: Rectangle {
+        property <angle> a: i * 45deg - 90deg;
+        property <int> age: Math.mod(i - root.step + 8, 8);
+        x: root.size / 2 + Math.cos(a) * root.size * 0.38 - self.width / 2;
+        y: root.size / 2 + Math.sin(a) * root.size * 0.38 - self.height / 2;
+        width: root.size * 0.18;
+        height: self.width;
+        border-radius: self.width / 2;
+        background: age == 0 ? Theme.accent : Theme.ink.transparentize(0.25 + age * 0.09);
+    }
+}
+
+export component Scroll inherits Rectangle {
+    in-out property <length> scroll-y <=> flick.content-y;
+    in property <length> content-height;
+    out property <length> visible-height: flick.height;
+    callback moved();
+
+    clip: true;
+
+    flick := Flickable {
+        content-height: root.content-height;
+        content-width: root.width;
+        changed content-y => { root.moved(); }
+
+        @children
+    }
+
+    if root.content-height > root.height: Rectangle {
+        property <float> part: root.height / root.content-height;
+        x: root.width - 7px;
+        y: 4px + (-flick.content-y / (root.content-height - root.height)) * (root.height - 8px - self.height);
+        width: 4px;
+        height: max(28px, (root.height - 8px) * part);
+        border-radius: 2px;
+        background: Theme.grey;
+        opacity: 0.3;
+    }
+}
+
+export component Sheet inherits Rectangle {
+    in property <length> card-width: 460px;
+    callback close();
+
+    property <float> shown: 0;
+    init => {
+        self.shown = 1;
+        keys.focus();
+    }
+
+    background: Theme.scrim.transparentize(1 - 0.6 * shown);
+    animate background { duration: 200ms; }
+
+    keys := FocusScope {
+        key-pressed(e) => {
+            if (e.text == Key.Escape) {
+                root.close();
+                return accept;
+            }
+            return reject;
+        }
+
+        TouchArea {
+            clicked => { root.close(); }
+        }
+    }
+
+    card := Rectangle {
+        x: (root.width - self.width) / 2;
+        y: max(24px, (root.height - self.height) / 2);
+        width: min(root.card-width, root.width - 48px);
+        height: body.preferred-height;
+        border-radius: 18px;
+        background: Theme.surface;
+        drop-shadow-blur: Theme.effects ? 40px : 0;
+        drop-shadow-offset-y: 16px;
+        drop-shadow-color: Theme.shadow;
+        opacity: root.shown;
+        transform-scale: 0.96 + 0.04 * root.shown;
+        animate opacity { duration: Theme.calm ? 0ms : 180ms; }
+        animate transform-scale { duration: Theme.calm ? 0ms : 320ms; easing: cubic-bezier(0.34, 1.56, 0.64, 1); }
+
+        TouchArea { }
+
+        Edge { inset: 18px; }
+
+        body := VerticalLayout {
+            padding: 24px;
+            spacing: 16px;
+
+            @children
+        }
+    }
+}
+
+export component SheetTitle inherits HorizontalLayout {
+    in property <string> text;
+    in property <string> badge;
+    in property <bool> live;
+
+    spacing: 10px;
+
+    VerticalLayout {
+        alignment: center;
+        Rectangle {
+            width: 8px;
+            height: 8px;
+            border-radius: 4px;
+            background: root.live ? Theme.accent : Theme.grey;
+            animate background { duration: 200ms; }
+        }
+    }
+
+    Text {
+        text: root.text;
+        font-size: 18px;
+        font-weight: 600;
+        color: Theme.ink;
+        vertical-alignment: center;
+        horizontal-stretch: 1;
+    }
+
+    if root.badge != "": Text {
+        text: root.badge;
+        font-family: Theme.dots;
+        font-weight: 900;
+        font-size: 16px;
+        color: Theme.grey;
+        vertical-alignment: center;
+    }
+}
+
+export component Pixel inherits Image {
+    image-rendering: pixelated;
+    image-fit: contain;
+}
+
+export component Avatar inherits Rectangle {
+    in property <image> head;
+    in property <bool> empty;
+    in property <length> size: 24px;
+
+    width: size;
+    height: size;
+    border-radius: size * 0.28;
+    background: Theme.surface-2;
+    clip: true;
+
+    if !root.empty: Pixel {
+        width: root.size;
+        height: root.size;
+        source: root.head;
+    }
+
+    if root.empty: Icon {
+        width: root.size * 0.6;
+        height: root.size * 0.6;
+        commands: Icons.user;
+    }
+}

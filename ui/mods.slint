@@ -1,0 +1,387 @@
+import { Theme } from "theme.slint";
+import { Button, Card, Icon, IconButton, Icons, Scroll, Segmented, Spinner, Toggle } from "components.slint";
+import { Command, FindItem, ModItem } from "types.slint";
+import { SearchPane, Thumb } from "rows.slint";
+
+component ModRow inherits Rectangle {
+    in property <ModItem> item;
+    in property <bool> divider;
+    callback toggle(bool);
+    callback remove();
+
+    property <bool> confirm;
+
+    height: 58px;
+    background: hover.has-hover ? Theme.surface-2.transparentize(0.6) : transparent;
+    animate background { duration: Theme.quick; }
+
+    changed confirm => { if (self.confirm) { reset.running = true; } }
+
+    reset := Timer {
+        interval: 3s;
+        running: false;
+        triggered => {
+            root.confirm = false;
+            self.running = false;
+        }
+    }
+
+    hover := TouchArea { }
+
+    if root.divider: Rectangle {
+        x: 64px;
+        y: 0;
+        width: root.width - 64px;
+        height: 1px;
+        background: Theme.hair;
+    }
+
+    HorizontalLayout {
+        padding-left: 14px;
+        padding-right: 12px;
+        spacing: 12px;
+        opacity: root.item.enabled || root.item.managed ? 1 : 0.5;
+        animate opacity { duration: Theme.quick; }
+
+        VerticalLayout {
+            alignment: center;
+            Thumb {
+                source: root.item.icon;
+                has-image: root.item.has-icon;
+                letter: root.item.letter;
+                managed: root.item.managed;
+            }
+        }
+
+        VerticalLayout {
+            alignment: center;
+            horizontal-stretch: 1;
+            spacing: 2px;
+
+            HorizontalLayout {
+                spacing: 8px;
+                Text {
+                    text: root.item.name;
+                    font-weight: 500;
+                    color: Theme.ink;
+                    overflow: elide;
+                }
+                Text {
+                    text: root.item.version;
+                    font-family: Theme.mono;
+                    font-size: 11px;
+                    color: Theme.grey;
+                    vertical-alignment: center;
+                    overflow: elide;
+                    horizontal-stretch: 1;
+                }
+            }
+
+            Text {
+                text: root.item.detail;
+                font-size: 11.5px;
+                color: Theme.grey;
+                overflow: elide;
+            }
+        }
+
+        if root.item.managed: VerticalLayout {
+            alignment: center;
+            HorizontalLayout {
+                spacing: 6px;
+                VerticalLayout {
+                    alignment: center;
+                    Icon {
+                        width: 12px;
+                        height: 12px;
+                        commands: Icons.lock;
+                    }
+                }
+                Text {
+                    text: "Included";
+                    font-size: 11.5px;
+                    color: Theme.grey;
+                    vertical-alignment: center;
+                }
+            }
+        }
+
+        if !root.item.managed && root.confirm: VerticalLayout {
+            alignment: center;
+            Button {
+                text: "Remove";
+                kind: "danger";
+                tall: 28px;
+                clicked => {
+                    root.confirm = false;
+                    root.remove();
+                }
+            }
+        }
+
+        if !root.item.managed && !root.confirm: VerticalLayout {
+            alignment: center;
+            IconButton {
+                icon: Icons.trash;
+                tip: "Remove";
+                danger: true;
+                size: 28px;
+                glyph: 14px;
+                opacity: hover.has-hover ? 1 : 0;
+                animate opacity { duration: Theme.quick; }
+                clicked => { root.confirm = true; }
+            }
+        }
+
+        if !root.item.managed: VerticalLayout {
+            alignment: center;
+            Toggle {
+                checked: root.item.enabled;
+                toggled(on) => { root.toggle(on); }
+            }
+        }
+    }
+}
+
+export component ModsPage inherits Rectangle {
+    in property <string> profile-name;
+    in property <string> game-version;
+    in property <bool> vanilla;
+    in-out property <int> tab;
+    in-out property <int> content-tab;
+    in property <[ModItem]> installed;
+    in property <[FindItem]> results;
+    in property <bool> searching;
+    in property <string> note;
+    in property <int> boost-state;
+    in property <string> boost-detail;
+    in property <[Command]> categories;
+    in property <[Command]> sorts;
+    in-out property <string> category;
+    in-out property <string> sort;
+    callback command(string);
+    callback toggle(string, bool);
+    callback remove(string);
+    callback find(string, bool);
+    callback install(string);
+    callback open(string);
+    callback filter(string, string);
+
+    property <string> query;
+
+    VerticalLayout {
+        padding-left: 8px;
+        padding-right: 8px;
+        spacing: 14px;
+
+        HorizontalLayout {
+            spacing: 12px;
+            height: 44px;
+
+            VerticalLayout {
+                alignment: center;
+                horizontal-stretch: 1;
+                Text {
+                    text: "Mods";
+                    font-size: 22px;
+                    font-weight: 600;
+                    color: Theme.ink;
+                }
+                Text {
+                    text: root.profile-name + "  ·  " + (root.vanilla ? "Vanilla" : "Fabric") + " for Minecraft " + root.game-version;
+                    font-size: 12px;
+                    color: Theme.grey;
+                }
+            }
+
+            if !root.vanilla: VerticalLayout {
+                alignment: center;
+                Segmented {
+                    items: ["Installed", "Discover"];
+                    current <=> root.tab;
+                    segment: 96px;
+                    changed(i) => {
+                        if (i == 1 && root.results.length == 0) {
+                            root.find(root.query, true);
+                        }
+                    }
+                }
+            }
+
+            if !root.vanilla: VerticalLayout {
+                alignment: center;
+                Segmented {
+                    items: ["Mods", "Packs", "Shaders"];
+                    current <=> root.content-tab;
+                    segment: 82px;
+                    changed(i) => { root.command("content:" + i); }
+                }
+            }
+
+            if !root.vanilla && root.tab == 0 && root.content-tab == 0: VerticalLayout {
+                alignment: center;
+                Button {
+                    text: "Update";
+                    icon: Icons.download;
+                    clicked => { root.command("update-mods"); }
+                }
+            }
+
+            VerticalLayout {
+                alignment: center;
+                Button {
+                    text: "Open folder";
+                    icon: Icons.folder;
+                    clicked => { root.command("open-mods-folder"); }
+                }
+            }
+        }
+
+        Rectangle {
+            vertical-stretch: 1;
+
+            if root.vanilla: VerticalLayout {
+                alignment: start;
+
+                Card {
+                    height: 74px;
+
+                    HorizontalLayout {
+                        padding: 16px;
+                        spacing: 14px;
+
+                        VerticalLayout {
+                            alignment: center;
+                            horizontal-stretch: 1;
+                            spacing: 2px;
+                            Text {
+                                text: "This profile runs vanilla Minecraft";
+                                font-weight: 600;
+                                color: Theme.ink;
+                            }
+                            Text {
+                                text: "Switch it to Fabric to add mods, shaders and CxVisuals.";
+                                font-size: 12px;
+                                color: Theme.grey;
+                            }
+                        }
+
+                        VerticalLayout {
+                            alignment: center;
+                            Button {
+                                text: "Use Fabric";
+                                kind: "primary";
+                                clicked => { root.command("use-fabric"); }
+                            }
+                        }
+                    }
+                }
+            }
+
+            if !root.vanilla && root.tab == 0: Scroll {
+                content-height: list.preferred-height + 4px;
+
+                list := VerticalLayout {
+                    width: parent.width;
+                    spacing: 14px;
+
+                    if root.boost-state != 2: Card {
+                        height: 74px;
+
+                        HorizontalLayout {
+                            padding: 16px;
+                            spacing: 14px;
+
+                            VerticalLayout {
+                                alignment: center;
+                                Rectangle {
+                                    width: 40px;
+                                    height: 40px;
+                                    border-radius: 12px;
+                                    background: Theme.accent;
+                                    Icon {
+                                        width: 20px;
+                                        height: 20px;
+                                        commands: Icons.bolt;
+                                        tint: Theme.on-accent;
+                                        solid: true;
+                                    }
+                                }
+                            }
+
+                            VerticalLayout {
+                                alignment: center;
+                                horizontal-stretch: 1;
+                                spacing: 2px;
+                                Text {
+                                    text: "Boost FPS";
+                                    font-weight: 600;
+                                    color: Theme.ink;
+                                }
+                                Text {
+                                    text: root.boost-detail;
+                                    font-size: 12px;
+                                    color: Theme.grey;
+                                    overflow: elide;
+                                }
+                            }
+
+                            VerticalLayout {
+                                alignment: center;
+                                if root.boost-state == 0: Button {
+                                    text: "Install";
+                                    kind: "accent";
+                                    clicked => { root.command("boost"); }
+                                }
+                                if root.boost-state == 1: Spinner { }
+                            }
+                        }
+                    }
+
+                    if root.installed.length > 0: Card {
+                        height: rows.preferred-height;
+
+                        Rectangle {
+                            border-radius: Theme.radius;
+                            clip: true;
+
+                            rows := VerticalLayout {
+                                for m[i] in root.installed: ModRow {
+                                    item: m;
+                                    divider: i > 0;
+                                    toggle(on) => { root.toggle(m.file, on); }
+                                    remove => { root.remove(m.file); }
+                                }
+                            }
+                        }
+                    }
+
+                    if root.installed.length == 0: Text {
+                        text: "No mods yet. Find some under Discover, or drop jars into the mods folder.";
+                        color: Theme.grey;
+                        font-size: 12.5px;
+                        horizontal-alignment: center;
+                        height: 80px;
+                        vertical-alignment: center;
+                    }
+                }
+            }
+
+            if !root.vanilla && root.tab == 1: SearchPane {
+                items: root.results;
+                note: root.note;
+                searching: root.searching;
+                placeholder: "Search Modrinth for " + root.game-version + " mods";
+                query <=> root.query;
+                find(q, now) => { root.find(q, now); }
+                install(id) => { root.install(id); }
+                open(id) => { root.command("open-mod:" + id); }
+                category <=> root.category;
+                sort <=> root.sort;
+                filter(cat, order) => { root.category = cat; root.sort = order; root.command("filter-mods:" + cat + "|" + order); }
+                categories: root.categories;
+                sorts: root.sorts;
+            }
+        }
+    }
+}
