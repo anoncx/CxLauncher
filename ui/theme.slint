@@ -1,0 +1,43 @@
+import { Palette } from "std-widgets.slint";
+
+export global Theme {
+    in-out property <int> mode: 0;
+    in-out property <int> accent-index: 0;
+    in-out property <bool> effects: true;
+    in-out property <bool> calm: false;
+    out property <bool> dark: mode == 2 || (mode == 0 && Palette.color-scheme == ColorScheme.dark);
+
+    out property <[color]> accents: [#d71921, #ff6b1a, #e5a50a, #2fb35d, #0a84ff, #8e5cf7, #8e8e93];
+    out property <[string]> accent-names: ["Red", "Orange", "Amber", "Green", "Blue", "Violet", "Mono"];
+    out property <color> accent: accent-index == 6 ? ink : accents[accent-index];
+    out property <color> on-accent: accent-index == 6 ? paper : #ffffff;
+
+    out property <color> paper: dark ? #000000 : #f4f4f2;
+    out property <color> surface: dark ? #1c1c1e : #ffffff;
+    out property <color> surface-2: dark ? #2c2c2e : #e8e8e5;
+    out property <color> well: dark ? #111113 : #f0f0ee;
+    out property <color> edge: dark ? #ffffff1c : #ffffff;
+    out property <color> lift: !effects ? transparent : dark ? #00000000 : #0000000d;
+    out property <color> raised: dark ? #5a5a5e : #ffffff;
+    out property <color> ink: dark ? #ffffff : #000000;
+    out property <color> ink-2: dark ? #d1d1d6 : #3a3a3c;
+    out property <color> grey: #8e8e93;
+    out property <color> hair: dark ? #ffffff1a : #00000014;
+    out property <color> alert: dark ? #ff5f57 : #c21219;
+    out property <color> warn: dark ? #ffcc4d : #a86b00;
+    out property <color> dot-off: dark ? #ffffff24 : #00000021;
+    out property <color> focus: dark ? #ffffff73 : #00000059;
+    out property <color> shadow: !effects ? transparent : dark ? #00000080 : #00000026;
+    out property <color> scrim: dark ? #000000a0 : #00000040;
+
+    out property <string> sans: "Geist";
+    out property <string> mono: "Geist Mono";
+    out property <string> dots: "Doto";
+
+    out property <length> radius: 14px;
+    out property <length> blur: effects ? 16px : 0px;
+
+    out property <duration> quick: calm ? 0ms : 160ms;
+    out property <duration> smooth: calm ? 0ms : 380ms;
+    out property <duration> bounce: calm ? 0ms : 260ms;
+}

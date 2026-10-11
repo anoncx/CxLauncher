@@ -1,0 +1,177 @@
+import { Theme } from "theme.slint";
+import { Button, Card, Icons, Segmented } from "components.slint";
+import { LogLine } from "types.slint";
+
+export component ConsolePage inherits Rectangle {
+    in property <int> count;
+    in property <int> first;
+    in property <[LogLine]> window;
+    in-out property <int> filter;
+    in property <bool> running;
+    in property <string> status;
+    callback view(int, int);
+    callback command(string);
+    callback filtered(int);
+
+    property <length> pitch: 19px;
+    property <bool> follow: true;
+
+    function request() {
+        root.view(Math.max(0, Math.floor(-flick.content-y / root.pitch) - 12), Math.ceil(flick.height / root.pitch) + 24);
+    }
+
+    function stick() {
+        if (root.follow) {
+            flick.content-y = Math.min(0px, flick.height - flick.content-height);
+        }
+        root.request();
+    }
+
+    changed count => { root.stick(); }
+    changed height => { root.stick(); }
+
+    VerticalLayout {
+        padding-left: 8px;
+        padding-right: 8px;
+        spacing: 14px;
+
+        HorizontalLayout {
+            spacing: 10px;
+            height: 44px;
+
+            VerticalLayout {
+                alignment: center;
+                horizontal-stretch: 1;
+                Text {
+                    text: "Console";
+                    font-size: 22px;
+                    font-weight: 600;
+                    color: Theme.ink;
+                }
+                HorizontalLayout {
+                    spacing: 6px;
+                    VerticalLayout {
+                        alignment: center;
+                        Rectangle {
+                            width: 6px;
+                            height: 6px;
+                            border-radius: 3px;
+                            background: root.running ? Theme.accent : Theme.grey.transparentize(0.4);
+                        }
+                    }
+                    Text {
+                        text: root.status;
+                        font-size: 12px;
+                        color: Theme.grey;
+                        overflow: elide;
+                    }
+                }
+            }
+
+            VerticalLayout {
+                alignment: center;
+                Segmented {
+                    items: ["All", "Warnings", "Errors"];
+                    current <=> root.filter;
+                    segment: 84px;
+                    changed(i) => {
+                        root.follow = true;
+                        root.filtered(i);
+                    }
+                }
+            }
+
+            VerticalLayout {
+                alignment: center;
+                Button {
+                    icon: Icons.copy;
+                    text: "Copy";
+                    clicked => { root.command("copy-log"); }
+                }
+            }
+
+            VerticalLayout {
+                alignment: center;
+                Button {
+                    icon: Icons.folder;
+                    text: "Logs";
+                    clicked => { root.command("open-logs"); }
+                }
+            }
+
+            if root.running: VerticalLayout {
+                alignment: center;
+                Button {
+                    icon: Icons.stop;
+                    text: "Stop";
+                    kind: "danger";
+                    clicked => { root.command("stop"); }
+                }
+            }
+        }
+
+        Card {
+            vertical-stretch: 1;
+
+            Rectangle {
+                border-radius: Theme.radius;
+                clip: true;
+                background: Theme.well;
+
+                flick := Flickable {
+                    content-height: root.count * root.pitch + 20px;
+                    content-width: self.width;
+                    changed content-y => {
+                        root.follow = -self.content-y + self.height >= self.content-height - root.pitch * 2;
+                        root.request();
+                    }
+
+                    for line[i] in root.window: Text {
+                        x: 14px;
+                        y: 10px + (root.first + i) * root.pitch;
+                        width: flick.width - 28px;
+                        height: root.pitch;
+                        text: line.text;
+                        font-family: Theme.mono;
+                        font-size: 11.5px;
+                        vertical-alignment: center;
+                        overflow: elide;
+                        color: line.level == 2 ? Theme.alert : line.level == 1 ? Theme.warn : line.level == 3 ? Theme.grey : Theme.ink-2;
+                    }
+                }
+
+                if root.count == 0: Text {
+                    text: "Game output shows up here while you play.";
+                    color: Theme.grey;
+                    font-size: 12.5px;
+                }
+
+                if !root.follow && root.count > 0: Rectangle {
+                    x: (parent.width - self.width) / 2;
+                    y: parent.height - self.height - 14px;
+                    width: jump-text.preferred-width + 28px;
+                    height: 30px;
+                    border-radius: 15px;
+                    background: Theme.ink;
+                    transform-scale: jump.pressed ? 0.94 : 1;
+                    animate transform-scale { duration: Theme.bounce; easing: cubic-bezier(0.34, 1.56, 0.64, 1); }
+
+                    jump := TouchArea {
+                        mouse-cursor: MouseCursor.pointer;
+                        clicked => {
+                            root.follow = true;
+                            root.stick();
+                        }
+                    }
+
+                    jump-text := Text {
+                        text: "Jump to latest";
+                        color: Theme.paper;
+                        font-size: 12px;
+                        font-weight: 500;
+                    }
+                }
+            }
+        }
+    }
+}

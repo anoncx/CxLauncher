@@ -1,0 +1,460 @@
+import "fonts/Geist-Regular.ttf";
+import "fonts/Geist-Medium.ttf";
+import "fonts/Geist-SemiBold.ttf";
+import "fonts/GeistMono-Regular.ttf";
+import "fonts/Doto-Black.ttf";
+
+import { Theme } from "theme.slint";
+import { Avatar, Icon, Icons, MenuAction, MenuDivider, MenuPick, Popover, Segmented, TipLayer } from "components.slint";
+import { PlayPage } from "play.slint";
+import { ModsPage } from "mods.slint";
+import { ProfilesPage } from "profiles.slint";
+import { ConsolePage } from "console.slint";
+import { SettingsPage } from "settings.slint";
+import { ProfileSheet, SigninSheet } from "sheets.slint";
+import { ModDetailSheet } from "detail.slint";
+import { AccountItem, Command, FindItem, JavaItem, LogLine, ModImage, ModItem, ModDetail, ModLink, NavItem, ProfileEdit, ProfileItem, SettingsView, ShotItem, WorldItem } from "types.slint";
+
+export { Theme, AccountItem, Command, FindItem, JavaItem, LogLine, ModImage, ModItem, ModDetail, ModLink, NavItem, ProfileEdit, ProfileItem, SettingsView, ShotItem, WorldItem }
+
+component Page inherits Rectangle {
+    property <float> shown: 0;
+    init => { self.shown = 1; }
+    opacity: shown;
+    animate shown { duration: Theme.calm ? 0ms : 260ms; easing: cubic-bezier(0.2, 0.8, 0.2, 1); }
+
+    Rectangle {
+        y: (1 - root.shown) * 10px;
+        height: root.height;
+        @children
+    }
+}
+
+export component AppWindow inherits Window {
+    title: "CxLauncher";
+    icon: @image-url("../assets/icon.png");
+    preferred-width: 1120px;
+    preferred-height: 720px;
+    min-width: 940px;
+    min-height: 620px;
+    background: Theme.paper;
+    default-font-family: Theme.sans;
+    default-font-size: 13px;
+
+    in-out property <int> page;
+    in property <image> tile;
+
+    in property <[AccountItem]> accounts;
+    in property <bool> has-account;
+    in property <string> account-name;
+    in property <image> account-head;
+    in property <image> figure;
+
+    in property <string> client-name: "CxVisuals";
+    in property <string> client-version;
+    in property <string> game-version: "26.2";
+    in property <string> loader-label;
+    in property <int> mod-count;
+    in property <string> client-game;
+    in property <bool> client-on: true;
+    in property <int> state;
+    in property <float> progress;
+    in property <string> detail;
+    in property <string> error;
+    in property <string> time;
+    in property <[string]> notes;
+    in property <int> online: -1;
+    in property <string> played;
+    in property <string> last-played;
+    in property <[ProfileItem]> profiles;
+    in property <string> profile-id;
+    in property <string> profile-name;
+    in property <int> profile-glyph;
+    in-out property <int> profiles-tab;
+    in property <[FindItem]> packs;
+    in property <bool> packs-searching;
+    in property <string> packs-note;
+    in property <[Command]> versions;
+    in property <[Command]> profile-javas;
+
+    in-out property <int> mods-tab;
+    in-out property <int> content-tab;
+    in property <[ModItem]> installed;
+    in property <[FindItem]> results;
+    in property <bool> searching;
+    in property <string> find-note;
+    in property <int> boost-state;
+    in property <string> boost-detail;
+    in property <[Command]> mod-categories;
+    in property <[Command]> sorts;
+    in-out property <string> mod-category: "all";
+    in-out property <string> mod-sort: "relevance";
+    in-out property <string> pack-category: "all";
+    in-out property <string> pack-sort: "relevance";
+
+    in property <int> log-count;
+    in property <int> log-first;
+    in property <[LogLine]> log-window;
+    in-out property <int> log-filter;
+    in property <string> log-status;
+
+    in property <SettingsView> settings;
+    in property <[Command]> javas;
+
+    in-out property <bool> signin-open;
+    in property <int> signin-mode;
+    in property <string> signin-code;
+    in property <string> signin-link;
+    in property <string> signin-error;
+
+    in-out property <bool> profile-open;
+    in property <ProfileEdit> profile-edit;
+    in property <string> instance-id;
+    in property <[WorldItem]> worlds;
+    in property <[ShotItem]> shots;
+    in property <int> shot-count;
+
+    in-out property <bool> detail-open;
+    in property <ModDetail> mod-detail;
+    in property <[ModLink]> links;
+    in property <[ModImage]> gallery;
+
+    in property <string> toast;
+    in property <int> toast-serial;
+
+    callback command(string);
+    callback setting(string, string);
+    callback mod-toggle(string, bool);
+    callback mod-remove(string);
+    callback find(string, bool);
+    callback install(string);
+    callback find-packs(string, bool);
+    callback install-pack(string);
+    callback log-view(int, int);
+    callback log-filtered(int);
+    callback signin-paste(string);
+    callback profile-save(ProfileEdit);
+
+    property <bool> toast-visible;
+    changed toast-serial => { root.toast-visible = root.toast != ""; }
+
+    VerticalLayout {
+        HorizontalLayout {
+            height: 58px;
+            padding-left: 20px;
+            padding-right: 14px;
+            spacing: 14px;
+
+            HorizontalLayout {
+                spacing: 8px;
+                width: 230px;
+
+                Text {
+                    text: "CxLauncher";
+                    font-family: Theme.dots;
+                    font-weight: 900;
+                    font-size: 21px;
+                    color: Theme.ink;
+                    vertical-alignment: center;
+                }
+
+                VerticalLayout {
+                    alignment: center;
+                    Rectangle {
+                        width: 7px;
+                        height: 7px;
+                        border-radius: 3.5px;
+                        background: root.state == 4 ? Theme.accent : root.state > 0 ? Theme.ink : Theme.grey.transparentize(0.5);
+                        animate background { duration: 300ms; }
+                    }
+                }
+            }
+
+            HorizontalLayout {
+                alignment: center;
+                horizontal-stretch: 1;
+
+                VerticalLayout {
+                    alignment: center;
+                    Segmented {
+                        items: ["Play", "Profiles", "Mods", "Console", "Settings"];
+                        icons: [Icons.play, Icons.profiles, Icons.mods, Icons.console, Icons.settings];
+                        current <=> root.page;
+                        segment: 92px;
+                        tall: 34px;
+                        changed(i) => { root.command("page:" + i); }
+                    }
+                }
+            }
+
+            HorizontalLayout {
+                width: 230px;
+                alignment: end;
+
+                VerticalLayout {
+                    alignment: center;
+
+                    account := Rectangle {
+                        height: 34px;
+                        border-radius: 17px;
+                        background: acc-touch.has-hover ? Theme.surface-2 : root.has-account ? transparent : Theme.ink;
+                        transform-scale: acc-touch.pressed ? 0.95 : 1;
+                        animate background { duration: Theme.quick; }
+                        animate transform-scale { duration: Theme.bounce; easing: cubic-bezier(0.34, 1.56, 0.64, 1); }
+
+                        acc-touch := TouchArea {
+                            mouse-cursor: MouseCursor.pointer;
+                            clicked => {
+                                if (root.has-account) {
+                                    acc-menu.show();
+                                } else {
+                                    root.command("signin");
+                                }
+                            }
+                        }
+
+                        HorizontalLayout {
+                            padding-left: 5px;
+                            padding-right: root.has-account ? 10px : 14px;
+                            spacing: 8px;
+
+                            VerticalLayout {
+                                alignment: center;
+                                Avatar {
+                                    size: 24px;
+                                    head: root.account-head;
+                                    empty: !root.has-account;
+                                }
+                            }
+
+                            Text {
+                                text: root.has-account ? root.account-name : "Sign in";
+                                font-weight: 500;
+                                color: root.has-account || acc-touch.has-hover ? Theme.ink : Theme.paper;
+                                vertical-alignment: center;
+                            }
+
+                            VerticalLayout {
+                                alignment: center;
+                                Icon {
+                                    width: root.has-account ? 11px : 0;
+                                    height: 11px;
+                                    visible: root.has-account;
+                                    commands: Icons.down;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        Rectangle {
+            vertical-stretch: 1;
+
+            HorizontalLayout {
+                padding-left: 16px;
+                padding-right: 16px;
+                padding-bottom: 16px;
+
+                Rectangle {
+                    if root.page == 0: Page {
+                        PlayPage {
+                            tile: root.tile;
+                            client-name: root.client-name;
+                            client-version: root.client-version;
+                            game-version: root.game-version;
+                            loader-label: root.loader-label;
+                            mod-count: root.mod-count;
+                            client-on: root.client-on;
+                            state: root.state;
+                            progress: root.progress;
+                            detail: root.detail;
+                            error: root.error;
+                            time: root.time;
+                            has-account: root.has-account;
+                            figure: root.figure;
+                            account-name: root.account-name;
+                            notes: root.notes;
+                            online: root.online;
+                            played: root.played;
+                            last-played: root.last-played;
+                            profiles: root.profiles;
+                            profile-id: root.profile-id;
+                            profile-name: root.profile-name;
+                            profile-glyph: root.profile-glyph;
+                            command(id) => { root.command(id); }
+                        }
+                    }
+
+                    if root.page == 1: Page {
+                        ProfilesPage {
+                            profiles: root.profiles;
+                            tab <=> root.profiles-tab;
+                            packs: root.packs;
+                            searching: root.packs-searching;
+                            note: root.packs-note;
+                            command(id) => { root.command(id); }
+                            find(q, now) => { root.find-packs(q, now); }
+                            install(id) => { root.install-pack(id); }
+                            open(id) => { root.command("open-pack:" + id); }
+                            category <=> root.pack-category;
+                            sort <=> root.pack-sort;
+                            categories: root.mod-categories;
+                            sorts: root.sorts;
+                            filter(cat, sort) => { root.pack-category = cat; root.pack-sort = sort; root.command("filter-packs:" + cat + "|" + sort); }
+                        }
+                    }
+
+                    if root.page == 2: Page {
+                        ModsPage {
+                            profile-name: root.profile-name;
+                            game-version: root.game-version;
+                            vanilla: root.loader-label == "Vanilla";
+                            tab <=> root.mods-tab;
+                            content-tab <=> root.content-tab;
+                            installed: root.installed;
+                            results: root.results;
+                            searching: root.searching;
+                            note: root.find-note;
+                            boost-state: root.boost-state;
+                            boost-detail: root.boost-detail;
+                            categories: root.mod-categories;
+                            sorts: root.sorts;
+                            category <=> root.mod-category;
+                            sort <=> root.mod-sort;
+                            command(id) => { root.command(id); }
+                            toggle(file, on) => { root.mod-toggle(file, on); }
+                            remove(file) => { root.mod-remove(file); }
+                            find(q, now) => { root.find(q, now); }
+                            install(id) => { root.install(id); }
+                            open(id) => { root.command("open-mod:" + id); }
+                            filter(cat, sort) => { root.mod-category = cat; root.mod-sort = sort; root.command("filter-mods:" + cat + "|" + sort); }
+                        }
+                    }
+
+                    if root.page == 3: Page {
+                        ConsolePage {
+                            count: root.log-count;
+                            first: root.log-first;
+                            window: root.log-window;
+                            filter <=> root.log-filter;
+                            running: root.state == 4;
+                            status: root.log-status;
+                            view(first, rows) => { root.log-view(first, rows); }
+                            command(id) => { root.command(id); }
+                            filtered(i) => { root.log-filtered(i); }
+                        }
+                    }
+
+                    if root.page == 4: Page {
+                        SettingsPage {
+                            data: root.settings;
+                            javas: root.javas;
+                            setting(k, v) => { root.setting(k, v); }
+                            command(id) => { root.command(id); }
+                        }
+                    }
+                }
+            }
+
+            Rectangle {
+                property <float> shown: root.toast-visible ? 1 : 0;
+                animate shown { duration: Theme.calm ? 0ms : 360ms; easing: cubic-bezier(0.34, 1.56, 0.64, 1); }
+                x: (parent.width - self.width) / 2;
+                y: parent.height - (self.height + 22px) * shown;
+                width: toast-text.preferred-width + 34px;
+                height: 36px;
+                border-radius: 18px;
+                background: Theme.ink;
+                opacity: shown;
+                visible: shown > 0.01;
+
+                toast-text := Text {
+                    text: root.toast;
+                    color: Theme.paper;
+                    font-size: 12.5px;
+                    font-weight: 500;
+                }
+
+                Timer {
+                    interval: 3200ms;
+                    running: root.toast-visible;
+                    triggered => { root.toast-visible = false; }
+                }
+            }
+        }
+    }
+
+    acc-menu := PopupWindow {
+        x: root.width - 280px - 14px;
+        y: 52px;
+        width: 280px;
+
+        Popover {
+            for a in root.accounts: MenuPick {
+                title: a.name;
+                detail: a.active ? "Playing as" : "Switch to";
+                active: a.active;
+                clicked => { root.command("account:" + a.uuid); }
+
+                Avatar {
+                    size: 26px;
+                    head: a.head;
+                }
+            }
+
+            MenuDivider { }
+
+            MenuAction {
+                icon: Icons.plus;
+                title: "Add account";
+                clicked => { root.command("signin"); }
+            }
+
+            MenuAction {
+                icon: Icons.signout;
+                title: "Sign out of " + root.account-name;
+                clicked => { root.command("signout"); }
+            }
+        }
+    }
+
+    if root.signin-open: SigninSheet {
+        mode: root.signin-mode;
+        code: root.signin-code;
+        link: root.signin-link;
+        error: root.signin-error;
+        command(id) => { root.command(id); }
+        paste(text) => { root.signin-paste(text); }
+        close => { root.command("signin-close"); }
+    }
+
+    if root.profile-open: ProfileSheet {
+        data: root.profile-edit;
+        can-delete: root.profiles.length > 1;
+        versions: root.versions;
+        profile-javas: root.profile-javas;
+        client-game: root.client-game;
+        worlds: root.worlds;
+        shots: root.shots;
+        shot-count: root.shot-count;
+        save(p) => { root.profile-save(p); }
+        command(id) => { root.command(id); }
+        close => { root.profile-open = false; }
+    }
+
+    if root.detail-open: ModDetailSheet {
+        item: root.mod-detail;
+        links: root.links;
+        gallery: root.gallery;
+        command(id) => { root.command(id); }
+        install(id) => { root.command("install-mod:" + id); }
+        close => { root.command("detail-close"); }
+    }
+
+    TipLayer {
+        width: parent.width;
+        height: parent.height;
+    }
+}

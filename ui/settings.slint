@@ -1,0 +1,285 @@
+import { Theme } from "theme.slint";
+import { Button, GroupLabel, Group, Icons, Input, Row, Scroll, Segmented, Select, Slider, Swatches, Toggle } from "components.slint";
+import { Command, SettingsView } from "types.slint";
+
+export component SettingsPage inherits Rectangle {
+    in property <SettingsView> data;
+    in property <[Command]> javas;
+    callback setting(string, string);
+    callback command(string);
+
+    property <float> memory: data.memory;
+    property <float> threads: data.threads;
+    changed data => {
+        root.memory = root.data.memory;
+        root.threads = root.data.threads;
+    }
+
+    function gigabytes(mb: float) -> string {
+        let tenths = Math.round(mb / 102.4);
+        return Math.floor(tenths / 10) + "." + Math.mod(tenths, 10) + " GB";
+    }
+
+    Scroll {
+        content-height: body.preferred-height + 24px;
+
+        HorizontalLayout {
+            alignment: center;
+            width: parent.width;
+
+            body := VerticalLayout {
+                width: min(640px, root.width - 32px);
+                padding-bottom: 12px;
+                spacing: 4px;
+
+                Text {
+                    text: "Settings";
+                    font-size: 22px;
+                    font-weight: 600;
+                    color: Theme.ink;
+                    height: 44px;
+                    vertical-alignment: center;
+                }
+
+                GroupLabel { text: "Appearance"; }
+
+                Group {
+                    Row {
+                        title: "Theme";
+                        divider: false;
+                        Segmented {
+                            items: ["System", "Light", "Dark"];
+                            current: Theme.mode;
+                            segment: 72px;
+                            changed(i) => { root.setting("theme", i); }
+                        }
+                    }
+
+                    Row {
+                        title: "Accent";
+                        Swatches {
+                            colors: Theme.accents;
+                            names: Theme.accent-names;
+                            current: Theme.accent-index;
+                            picked(i) => { root.setting("accent", i); }
+                        }
+                    }
+
+                    Row {
+                        title: "Effects";
+                        detail: "Dot field, glow, parallax and soft shadows. Turn off on older PCs.";
+                        Toggle {
+                            checked: Theme.effects;
+                            toggled(on) => { root.setting("effects", on ? "1" : "0"); }
+                        }
+                    }
+
+                    Row {
+                        title: "Reduce motion";
+                        detail: "No springs, sliding or rolling numbers.";
+                        Toggle {
+                            checked: Theme.calm;
+                            toggled(on) => { root.setting("calm", on ? "1" : "0"); }
+                        }
+                    }
+                }
+
+                GroupLabel { text: "Game"; }
+
+                Group {
+                    Row {
+                        title: "Memory";
+                        detail: "Recommended for this PC: " + root.gigabytes(root.data.memory-recommended) + "  ·  " + root.data.machine;
+                        divider: false;
+                        HorizontalLayout {
+                            spacing: 12px;
+                            Slider {
+                                width: 200px;
+                                minimum: 1024;
+                                maximum: root.data.memory-max;
+                                step: 256;
+                                mark: root.data.memory-recommended;
+                                value <=> root.memory;
+                                released(v) => { root.setting("memory", Math.round(v)); }
+                            }
+                            Text {
+                                width: 52px;
+                                text: root.gigabytes(root.memory);
+                                font-family: Theme.mono;
+                                font-size: 12px;
+                                color: Theme.ink;
+                                vertical-alignment: center;
+                                horizontal-alignment: right;
+                            }
+                        }
+                    }
+
+                    Row {
+                        title: "Window size";
+                        HorizontalLayout {
+                            spacing: 6px;
+                            Input {
+                                width: 64px;
+                                mono: true;
+                                value: root.data.width;
+                                edited(t) => { root.setting("width", t); }
+                            }
+                            Text {
+                                text: "×";
+                                color: Theme.grey;
+                                vertical-alignment: center;
+                            }
+                            Input {
+                                width: 64px;
+                                mono: true;
+                                value: root.data.height;
+                                edited(t) => { root.setting("height", t); }
+                            }
+                        }
+                    }
+
+                    Row {
+                        title: "Fullscreen";
+                        Toggle {
+                            checked: root.data.fullscreen;
+                            toggled(on) => { root.setting("fullscreen", on ? "1" : "0"); }
+                        }
+                    }
+
+                    Row {
+                        title: "Garbage collector";
+                        detail: root.data.collector == 0 ? "G1, tuned like the official launcher. Best for most PCs." : "ZGC, almost no stutter. Needs 4 GB or more.";
+                        Segmented {
+                            items: ["Balanced", "Smooth"];
+                            current: root.data.collector;
+                            segment: 84px;
+                            changed(i) => { root.setting("collector", i); }
+                        }
+                    }
+
+                    Row {
+                        title: "Java arguments";
+                        Input {
+                            width: 240px;
+                            mono: true;
+                            placeholder: "-Dexample=true";
+                            value: root.data.jvm-args;
+                            edited(t) => { root.setting("jvm-args", t); }
+                        }
+                    }
+                }
+
+                GroupLabel { text: "Java"; }
+
+                Group {
+                    Row {
+                        title: "Runtime";
+                        detail: root.data.java == "" ? "Downloads the exact Java the game asks for." : root.data.java;
+                        divider: false;
+                        Select {
+                            width: 220px;
+                            menu-width: 320px;
+                            options: root.javas;
+                            current: root.data.java;
+                            label: root.data.java-label;
+                            selected(id) => { root.setting("java", id); }
+                        }
+                    }
+                }
+
+                GroupLabel { text: "Launcher"; }
+
+                Group {
+                    Row {
+                        title: "When the game starts";
+                        divider: false;
+                        Segmented {
+                            items: ["Keep open", "Minimize"];
+                            current: root.data.after-launch;
+                            segment: 92px;
+                            changed(i) => { root.setting("after-launch", i); }
+                        }
+                    }
+
+                    Row {
+                        title: "Parallel downloads";
+                        detail: "Fewer is gentler on slow connections.";
+                        HorizontalLayout {
+                            spacing: 12px;
+                            Slider {
+                                width: 160px;
+                                minimum: 2;
+                                maximum: 32;
+                                step: 1;
+                                value <=> root.threads;
+                                released(v) => { root.setting("threads", Math.round(v)); }
+                            }
+                            Text {
+                                width: 24px;
+                                text: Math.round(root.threads);
+                                font-family: Theme.mono;
+                                font-size: 12px;
+                                color: Theme.ink;
+                                vertical-alignment: center;
+                                horizontal-alignment: right;
+                            }
+                        }
+                    }
+
+                    Row {
+                        title: "Repair game files";
+                        detail: "Checks every file against its checksum and fetches anything damaged.";
+                        Button {
+                            text: "Repair";
+                            icon: Icons.repair;
+                            clicked => { root.command("repair"); }
+                        }
+                    }
+
+                    Row {
+                        title: "Data folder";
+                        detail: root.data.data-dir;
+                        Button {
+                            text: "Open";
+                            icon: Icons.folder;
+                            clicked => { root.command("open-data"); }
+                        }
+                    }
+                }
+
+                GroupLabel { text: "CxVisuals"; }
+
+                Group {
+                    Row {
+                        title: "Client build";
+                        detail: root.data.local ? root.data.local-jar : "Latest release from the CxVisuals cloud.";
+                        divider: false;
+                        HorizontalLayout {
+                            spacing: 8px;
+                            if root.data.local: Button {
+                                text: "Choose…";
+                                clicked => { root.command("pick-jar"); }
+                            }
+                            Segmented {
+                                items: ["Cloud", "Local jar"];
+                                current: root.data.local ? 1 : 0;
+                                segment: 84px;
+                                changed(i) => { root.setting("local", i); }
+                            }
+                        }
+                    }
+                }
+
+                GroupLabel { text: "About"; }
+
+                Group {
+                    Row {
+                        title: "CxLauncher " + root.data.version;
+                        detail: "Native Rust and Slint. Fonts: Geist and Doto under the SIL Open Font License.";
+                        divider: false;
+                    }
+                }
+            }
+        }
+    }
+}

@@ -1,0 +1,140 @@
+name: build
+
+on:
+  push:
+    branches: ["**"]
+    tags: ["v*"]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  version:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.v.outputs.version }}
+      release: ${{ steps.v.outputs.release }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - id: v
+        shell: bash
+        run: |
+          base=$(grep -m1 '^version' Cargo.toml | cut -d'"' -f2)
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
+            version="${GITHUB_REF_NAME#v}"
+            release=true
+          else
+            version="${base%.*}.${GITHUB_RUN_NUMBER}"
+            if [[ "$GITHUB_EVENT_NAME" == "push" && "$GITHUB_REF_NAME" == "${{ github.event.repository.default_branch }}" ]]; then
+              release=true
+            else
+              release=false
+            fi
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "release=$release" >> "$GITHUB_OUTPUT"
+
+  build:
+    needs: version
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            platform: windows
+            formats: nsis
+          - os: ubuntu-22.04
+            platform: linux
+            formats: deb,appimage
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+
+      - uses: Swatinem/rust-cache@v2
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Set version
+        shell: bash
+        run: sed -i.bak "0,/^version = .*/s//version = \"${{ needs.version.outputs.version }}\"/" Cargo.toml && rm Cargo.toml.bak
+
+      - name: Install Linux build dependencies
+        if: matrix.platform == 'linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libfontconfig1-dev libxkbcommon-dev libwayland-dev libx11-dev \
+            libxcb1-dev libgl1-mesa-dev build-essential file
+
+      - name: Lint
+        run: cargo clippy --all-targets -- -D warnings
+
+      - name: Test
+        run: cargo test
+
+      - name: Install cargo-packager
+        run: cargo install cargo-packager --locked
+
+      - name: Package
+        run: cargo packager --release --formats ${{ matrix.formats }}
+
+      - name: Portable build
+        shell: bash
+        run: |
+          v=${{ needs.version.outputs.version }}
+          mkdir -p dist
+          if [[ "${{ matrix.platform }}" == "windows" ]]; then
+            cp target/release/cxlauncher.exe "dist/CxLauncher-$v-windows-x64-portable.exe"
+          else
+            tar -czf "dist/CxLauncher-$v-linux-x64.tar.gz" -C target/release cxlauncher
+          fi
+          find target/packages -maxdepth 1 -type f \( -name "*.exe" -o -name "*.deb" -o -name "*.AppImage" \) -exec cp {} dist/ \;
+          ls -la dist
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cxlauncher-${{ matrix.platform }}
+          if-no-files-found: error
+          path: dist/*
+
+  release:
+    needs: [version, build]
+    if: needs.version.outputs.release == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ needs.version.outputs.version }}
+          name: CxLauncher ${{ needs.version.outputs.version }}
+          target_commitish: ${{ github.sha }}
+          make_latest: true
+          body: |
+            Automatic build of ${{ github.sha }}.
+
+            ${{ github.event.head_commit.message }}
+
+            **Windows:** `CxLauncher_*_x64-setup.exe` installer, or the portable `.exe`.
+            **Linux:** `.AppImage` (chmod +x and run), `.deb`, or the `.tar.gz` binary
+            (needs `libxkbcommon-x11-0` and `libfontconfig1`).
+          files: dist/*
