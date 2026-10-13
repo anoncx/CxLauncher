@@ -5,6 +5,7 @@ use crate::download::Progress;
 use crate::game::{self, Game, Options, Session};
 use crate::install::{self, Prepared, Request, Stage};
 use crate::mc::fabric;
+use crate::mc::loader::Loader;
 use crate::sys::{duration, megabytes, now};
 use slint::{ComponentHandle, SharedString};
 use std::collections::HashMap;
@@ -136,7 +137,7 @@ impl App {
             return;
         };
         let profile = self.profile();
-        let session = Session { name: account.name.clone(), uuid: account.uuid.clone(), token: account.token.clone(), xuid: String::new() };
+        let session = Session { name: account.name.clone(), uuid: account.uuid.clone(), token: account.token.clone(), xuid: String::new(), offline: account.offline };
         let options = Options {
             memory: self.settings.memory,
             collector: self.settings.collector,
@@ -157,7 +158,7 @@ impl App {
                 env!("CARGO_PKG_VERSION"),
                 prepared.game,
                 prepared.java_major,
-                prepared.client.as_ref().map(|c| format!("{} {}", c.name, c.version)).unwrap_or_else(|| "Fabric".into())
+                prepared.client.as_ref().map(|c| format!("{} {}", c.name, c.version)).unwrap_or_else(|| self.loader_label(&profile, &prepared.game))
             ),
         );
         let _discrete_gpu = game::DiscreteGpuGuard::apply(self.settings.discrete_gpu);
@@ -306,6 +307,7 @@ impl App {
         ui.set_client_version(self.info.version.clone().into());
         let game = self.game_of(&profile);
         ui.set_loader_label(self.loader_label(&profile, &game).into());
+        ui.set_loader_name(if profile.vanilla { "Vanilla" } else { profile.loader().label() }.into());
         ui.set_game_version(game.into());
         ui.set_mod_count(crate::install::jars(&crate::install::mods_dir(&self.core.paths, &profile.id)).len() as i32);
         ui.set_online(self.info.online);
@@ -332,7 +334,7 @@ impl App {
             };
             let (name, version, game, minimum, notes) = found.unwrap_or_default();
             let game = if game.is_empty() { client::GAME.to_string() } else { game };
-            let loader = fabric::latest_loader(&core.http, &core.ep, &core.paths, &game, minimum.as_deref()).unwrap_or_default();
+            let loader = fabric::latest_loader(&core.http, &core.ep, &core.paths, Loader::Fabric, &game, minimum.as_deref()).unwrap_or_default();
             let manifest = crate::mc::meta::manifest(&core.http, &core.ep, &core.paths).unwrap_or_default();
             let releases: Vec<String> = manifest.releases().map(|v| v.id.clone()).collect();
             let versions: Vec<profiles::VersionEntry> = manifest.versions.iter().map(|v| profiles::VersionEntry { id: v.id.clone(), kind: v.kind.clone() }).collect();
@@ -365,10 +367,11 @@ impl App {
         if profile.vanilla {
             return "Vanilla".into();
         }
-        let version = Some(profile.loader.trim().to_string()).filter(|l| !l.is_empty()).or_else(|| self.info.loaders.get(game).cloned());
-        match version {
-            Some(v) => format!("Fabric {v}"),
-            None => "Fabric".into(),
+        let loader = profile.loader();
+        let known = (loader == Loader::Fabric).then(|| self.info.loaders.get(game).cloned()).flatten();
+        match Some(profile.loader.trim().to_string()).filter(|l| !l.is_empty()).or(known) {
+            Some(v) => format!("{} {v}", loader.label()),
+            None => loader.label().into(),
         }
     }
 

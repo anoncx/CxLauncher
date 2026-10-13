@@ -1,4 +1,5 @@
 use crate::download::{self, Hash, Job, Progress};
+use super::loader::Loader;
 use crate::net::Http;
 use serde::Deserialize;
 use std::collections::HashMap;
@@ -46,7 +47,7 @@ pub struct Pack {
     pub name: String,
     pub version: String,
     pub game: String,
-    pub fabric: Option<String>,
+    pub loader: Option<(Loader, String)>,
 }
 
 fn safe(rel: &str) -> bool {
@@ -64,13 +65,9 @@ fn index(zip: &mut zip::ZipArchive<std::fs::File>) -> Result<Index, String> {
 }
 
 fn describe(index: &Index) -> Result<Pack, String> {
-    for (key, name) in [("forge", "Forge"), ("neoforge", "NeoForge"), ("quilt-loader", "Quilt")] {
-        if index.dependencies.contains_key(key) {
-            return Err(format!("This modpack needs {name}. CxLauncher runs Vanilla and Fabric."));
-        }
-    }
     let game = index.dependencies.get("minecraft").cloned().ok_or("the modpack names no Minecraft version")?;
-    Ok(Pack { name: index.name.clone(), version: index.version.clone(), game, fabric: index.dependencies.get("fabric-loader").cloned() })
+    let loader = Loader::ALL.into_iter().find_map(|l| index.dependencies.get(l.pack_key()).map(|v| (l, v.clone())));
+    Ok(Pack { name: index.name.clone(), version: index.version.clone(), game, loader })
 }
 
 pub fn read(file: &Path) -> Result<Pack, String> {
@@ -135,7 +132,7 @@ mod tests {
             "dependencies": {"minecraft": "1.21.4", "fabric-loader": "0.16.10"}}"#;
         write_jar(&file, &[("modrinth.index.json", index), ("overrides/config/a.txt", b"a"), ("client-overrides/options.txt", b"o"), ("overrides/../../evil.txt", b"x")]);
         let pack = read(&file).unwrap();
-        assert_eq!(pack, Pack { name: "Fast Pack".into(), version: "6.1".into(), game: "1.21.4".into(), fabric: Some("0.16.10".into()) });
+        assert_eq!(pack, Pack { name: "Fast Pack".into(), version: "6.1".into(), game: "1.21.4".into(), loader: Some((Loader::Fabric, "0.16.10".into())) });
         let game = dir.join("game");
         install(&Http::direct(), &file, &game, 2, &Progress::default()).unwrap();
         assert_eq!(std::fs::read(game.join("config/a.txt")).unwrap(), b"a");
@@ -145,8 +142,10 @@ mod tests {
     }
 
     #[test]
-    fn refuses_other_loaders() {
-        let index = Index { name: "F".into(), version: "1".into(), files: Vec::new(), dependencies: [("minecraft".to_string(), "1.20.1".to_string()), ("forge".to_string(), "47".to_string())].into_iter().collect() };
-        assert!(describe(&index).unwrap_err().contains("Forge"));
+    fn reads_every_loader() {
+        let index = |key: &str| Index { name: "F".into(), version: "1".into(), files: Vec::new(), dependencies: [("minecraft".to_string(), "1.20.1".to_string()), (key.to_string(), "47".to_string())].into_iter().collect() };
+        assert_eq!(describe(&index("forge")).unwrap().loader, Some((Loader::Forge, "47".into())));
+        assert_eq!(describe(&index("neoforge")).unwrap().loader, Some((Loader::NeoForge, "47".into())));
+        assert_eq!(describe(&index("quilt-loader")).unwrap().loader, Some((Loader::Quilt, "47".into())));
     }
 }

@@ -230,6 +230,7 @@ export component PlayPage inherits Rectangle {
     in property <string> client-version;
     in property <string> game-version;
     in property <string> loader-label;
+    in property <string> loader-name;
     in property <int> mod-count;
     in property <bool> client-on: true;
     in property <int> state;
@@ -588,7 +589,7 @@ export component PlayPage inherits Rectangle {
                     }
                     Stat {
                         label: "Loader";
-                        value: root.loader-label == "Vanilla" ? "Vanilla" : "Fabric";
+                        value: root.loader-name;
                     }
                     Stat {
                         label: "Mods";

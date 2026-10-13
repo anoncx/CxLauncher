@@ -221,17 +221,10 @@ fn base(ep: &Endpoints) -> &str {
 }
 
 fn loader_facets(loader: &str) -> String {
-    match loader {
-        "" | "fabric" => "[\"categories:fabric\"]".to_string(),
-        other => format!("[\"categories:{other}\"]"),
-    }
+    format!("[\"categories:{loader}\"]")
 }
 
-pub fn versions(http: &Http, ep: &Endpoints, paths: &Paths, project: &str, game: &str) -> Result<Vec<ModVersion>, String> {
-    versions_for(http, ep, paths, project, game, "fabric")
-}
-
-pub fn versions_for(http: &Http, ep: &Endpoints, paths: &Paths, project: &str, game: &str, loader: &str) -> Result<Vec<ModVersion>, String> {
+pub fn versions(http: &Http, ep: &Endpoints, paths: &Paths, project: &str, game: &str, loader: &str) -> Result<Vec<ModVersion>, String> {
     let url = format!(
         "{}/project/{}/version?loaders={}&game_versions={}",
         base(ep),
@@ -266,8 +259,8 @@ pub fn search(http: &Http, ep: &Endpoints, query: &str, game: Option<&str>, kind
 
 pub fn search_filtered(http: &Http, ep: &Endpoints, query: &str, kind: &str, filter: &Filter) -> Result<Search, String> {
     let mut facets = vec![format!("[\"project_type:{kind}\"]")];
-    if kind == "mod" || kind == "modpack" {
-        facets.push(loader_facets(filter.loader.as_deref().unwrap_or("fabric")));
+    if let Some(loader) = filter.loader.as_deref().filter(|_| kind == "mod") {
+        facets.push(loader_facets(loader));
     }
     if let Some(game) = filter.game.as_ref().filter(|g| !g.is_empty()) {
         facets.push(format!("[\"versions:{game}\"]"));
@@ -290,8 +283,9 @@ pub fn project(http: &Http, ep: &Endpoints, id: &str) -> Result<Project, String>
     http.json(&format!("{}/project/{}", base(ep), encode(id)))
 }
 
-pub fn pack_versions(http: &Http, ep: &Endpoints, project: &str) -> Result<Vec<ModVersion>, String> {
-    http.json(&format!("{}/project/{}/version?loaders={}", base(ep), encode(project), encode("[\"fabric\"]")))
+pub fn pack_versions(http: &Http, ep: &Endpoints, project: &str, loader: Option<&str>) -> Result<Vec<ModVersion>, String> {
+    let filter = loader.map(|l| format!("?loaders={}", encode(&format!("[\"{l}\"]")))).unwrap_or_default();
+    http.json(&format!("{}/project/{}/version{filter}", base(ep), encode(project)))
 }
 
 #[cfg(test)]

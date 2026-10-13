@@ -2,6 +2,7 @@ use super::finder::Kind;
 use super::play::Run;
 use super::{background, later, App};
 use crate::download::Progress;
+use crate::mc::loader::Loader;
 use crate::mc::{modrinth, mrpack};
 use crate::store::{new_id, Profile};
 use crate::sys::{ago, duration, now};
@@ -67,7 +68,7 @@ impl VersionFilter {
 impl App {
     fn describe(&self, p: &Profile) -> String {
         let game = self.game_of(p);
-        let loader = if p.vanilla { "Vanilla" } else { "Fabric" };
+        let loader = if p.vanilla { "Vanilla" } else { p.loader().label() };
         let extra = if p.uses_client() { "  ·  CxVisuals" } else { "" };
         format!("Minecraft {game}  ·  {loader}{extra}")
     }
@@ -165,6 +166,7 @@ impl App {
             glyph: p.glyph,
             game: p.game.as_str().into(),
             vanilla: p.vanilla,
+            kind: p.loader().id().into(),
             client: p.client,
             server: p.server.as_str().into(),
             loader: p.loader.as_str().into(),
@@ -190,6 +192,7 @@ impl App {
             p.glyph = edit.glyph.clamp(0, 5);
             p.game = edit.game.trim().to_string();
             p.vanilla = edit.vanilla;
+            p.kind = Loader::parse(&edit.kind).id().to_string();
             p.client = edit.client;
             p.server = edit.server.trim().to_string();
             p.include_snapshots = edit.include_snapshots;
@@ -204,11 +207,11 @@ impl App {
         if let Some(ui) = self.ui() {
             ui.set_profile_open(false);
         }
+        self.push_profiles();
         if fresh {
             self.toast("Profile created");
             self.switch_profile(&id);
         } else {
-            self.push_profiles();
             self.push_play();
         }
     }
@@ -303,9 +306,10 @@ impl App {
             id: id.clone(),
             name: pack.name.clone(),
             game: pack.game,
-            vanilla: pack.fabric.is_none(),
+            vanilla: pack.loader.is_none(),
+            kind: pack.loader.as_ref().map(|(l, _)| l.id().to_string()).unwrap_or_default(),
             client: false,
-            loader: pack.fabric.unwrap_or_default(),
+            loader: pack.loader.map(|(_, v)| v).unwrap_or_default(),
             pack: label,
             pack_id: project_id,
             pack_version,
@@ -313,6 +317,7 @@ impl App {
             ..Default::default()
         });
         self.profiles.save(&self.core.paths);
+        self.push_profiles();
         self.switch_profile(&id);
         self.toast(format!("{} is ready to play", pack.name));
     }
@@ -328,7 +333,7 @@ impl App {
         self.unpack(
             title,
             move |core| {
-                let version = modrinth::pick(modrinth::pack_versions(&core.http, &core.ep, &project)?, None).ok_or("This modpack has no Fabric release")?;
+                let version = modrinth::pick(modrinth::pack_versions(&core.http, &core.ep, &project, None)?, None).ok_or("This modpack has no release")?;
                 let pack_version = version.version_number.clone();
                 let job = version.job(&core.paths.cache().join("packs")).ok_or("This modpack has no file to download")?;
                 let file = job.path.clone();
@@ -351,7 +356,7 @@ impl App {
         let core = self.core.clone();
         self.toast(format!("Checking updates for {}", profile.name));
         background(move || {
-            let result = modrinth::pack_versions(&core.http, &core.ep, &profile.pack_id).and_then(|list| {
+            let result = modrinth::pack_versions(&core.http, &core.ep, &profile.pack_id, Some(profile.loader().id())).and_then(|list| {
                 let version = modrinth::pick(list, None).ok_or("No pack versions found")?;
                 if version.version_number == profile.pack_version {
                     return Ok(None);

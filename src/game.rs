@@ -17,6 +17,7 @@ pub struct Session {
     pub uuid: String,
     pub token: String,
     pub xuid: String,
+    pub offline: bool,
 }
 
 #[derive(Clone, Debug, Default)]
@@ -141,7 +142,7 @@ pub fn arguments(p: &Prepared, s: &Session, o: &Options) -> Vec<String> {
         ("auth_session", format!("token:{}", s.token)),
         ("clientid", String::new()),
         ("auth_xuid", if s.xuid.is_empty() { "0".into() } else { s.xuid.clone() }),
-        ("user_type", "msa".into()),
+        ("user_type", if s.offline { "legacy" } else { "msa" }.into()),
         ("user_properties", "{}".into()),
         ("version_type", "CxLauncher".into()),
         ("natives_directory", text(&p.natives)),

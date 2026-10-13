@@ -109,7 +109,7 @@ fn export_pack(dir: &Path, profile: &crate::store::Profile, game: &str, out: &Pa
     let options = zip::write::SimpleFileOptions::default().compression_method(zip::CompressionMethod::Deflated);
     let mut deps = serde_json::json!({ "minecraft": game });
     if !profile.vanilla {
-        deps["fabric-loader"] = serde_json::json!(if profile.loader.trim().is_empty() { "*" } else { profile.loader.trim() });
+        deps[profile.loader().pack_key()] = serde_json::json!(if profile.loader.trim().is_empty() { "*" } else { profile.loader.trim() });
     }
     let index = serde_json::json!({
         "formatVersion": 1,

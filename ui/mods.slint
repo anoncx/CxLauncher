@@ -147,6 +147,7 @@ export component ModsPage inherits Rectangle {
     in property <string> profile-name;
     in property <string> game-version;
     in property <bool> vanilla;
+    in property <string> loader-name;
     in-out property <int> tab;
     in-out property <int> content-tab;
     in property <[ModItem]> installed;
@@ -188,7 +189,7 @@ export component ModsPage inherits Rectangle {
                     color: Theme.ink;
                 }
                 Text {
-                    text: root.profile-name + "  ·  " + (root.vanilla ? "Vanilla" : "Fabric") + " for Minecraft " + root.game-version;
+                    text: root.profile-name + "  ·  " + root.loader-name + " for Minecraft " + root.game-version;
                     font-size: 12px;
                     color: Theme.grey;
                 }

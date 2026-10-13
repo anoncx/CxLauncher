@@ -2,6 +2,7 @@ use crate::mc::Endpoints;
 use crate::net::{encode, Http, Reply};
 use crate::paths::{load_json, write_private, Paths};
 use crate::sys::now;
+use md5::{Digest, Md5};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 
@@ -20,6 +21,7 @@ pub struct Account {
     pub expires: u64,
     pub skin: String,
     pub slim: bool,
+    pub offline: bool,
 }
 
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]
@@ -275,11 +277,12 @@ pub fn minecraft(http: &Http, ep: &Endpoints, ms: &MsToken, browser: bool) -> Re
         expires: now() + if login.expires_in > 0 { login.expires_in } else { 86_400 },
         skin: skin.map(|s| s.url.replace("http://", "https://")).unwrap_or_default(),
         slim: skin.is_some_and(|s| s.variant.eq_ignore_ascii_case("slim")),
+        offline: false,
     })
 }
 
 pub fn fresh(account: &Account) -> bool {
-    !account.token.is_empty() && account.expires > now() + 600
+    account.offline || !account.token.is_empty() && account.expires > now() + 600
 }
 
 pub fn renew(http: &Http, ep: &Endpoints, account: &Account) -> Result<Account, String> {
@@ -294,6 +297,25 @@ pub fn renew(http: &Http, ep: &Endpoints, account: &Account) -> Result<Account, 
     Ok(renewed)
 }
 
+pub fn valid_username(name: &str) -> bool {
+    (3..=16).contains(&name.len()) && name.chars().all(|c| c.is_ascii_alphanumeric() || c == '_')
+}
+
+pub fn offline_uuid(name: &str) -> String {
+    let mut bytes: [u8; 16] = Md5::digest(format!("OfflinePlayer:{name}").as_bytes()).into();
+    bytes[6] = bytes[6] & 0x0f | 0x30;
+    bytes[8] = bytes[8] & 0x3f | 0x80;
+    dashed(&bytes.iter().map(|b| format!("{b:02x}")).collect::<String>())
+}
+
+pub fn offline_account(name: &str) -> Result<Account, String> {
+    let name = name.trim();
+    if !valid_username(name) {
+        return Err("Use 3 to 16 letters, numbers or underscores.".into());
+    }
+    Ok(Account { uuid: offline_uuid(name), name: name.to_string(), token: "0".into(), offline: true, ..Default::default() })
+}
+
 pub fn dashed(id: &str) -> String {
     let id: String = id.chars().filter(|c| c.is_ascii_hexdigit()).collect::<String>().to_ascii_lowercase();
     if id.len() != 32 {
@@ -305,6 +327,14 @@ pub fn dashed(id: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn derives_offline_uuids() {
+        assert_eq!(offline_uuid("Notch"), "b50ad385-829d-3141-a216-7e7d7539ba7f");
+        assert!(offline_account("ab").is_err());
+        assert!(offline_account("bad name").is_err());
+        assert!(offline_account("Steve_01").is_ok_and(|a| a.offline && a.token == "0"));
+    }
 
     #[test]
     fn reads_redirect_codes() {

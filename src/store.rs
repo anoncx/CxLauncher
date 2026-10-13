@@ -1,3 +1,4 @@
+use crate::mc::loader::Loader;
 use crate::paths::{load_json, save_json, Paths};
 use crate::sys::{now, Machine};
 use serde::{Deserialize, Serialize};
@@ -70,6 +71,7 @@ pub struct Profile {
     pub name: String,
     pub game: String,
     pub vanilla: bool,
+    pub kind: String,
     pub client: bool,
     pub loader: String,
     pub pack: String,
@@ -92,6 +94,7 @@ impl Default for Profile {
             name: String::new(),
             game: String::new(),
             vanilla: false,
+            kind: String::new(),
             client: true,
             loader: String::new(),
             pack: String::new(),
@@ -110,8 +113,12 @@ impl Default for Profile {
 }
 
 impl Profile {
+    pub fn loader(&self) -> Loader {
+        Loader::parse(&self.kind)
+    }
+
     pub fn uses_client(&self) -> bool {
-        self.client && !self.vanilla
+        self.client && !self.vanilla && self.loader().runs_client()
     }
 }
 

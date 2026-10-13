@@ -316,7 +316,7 @@ mod launch {
         assert_eq!(std::fs::read_dir(paths.assets().join("objects")).unwrap().count(), 2);
         assert_eq!(prepared.mods.len(), 2);
 
-        let session = Session { name: "Tester".into(), uuid: "069a79f4-44e9-4726-a5be-fca90e38aaf5".into(), token: "secret".into(), xuid: String::new() };
+        let session = Session { name: "Tester".into(), uuid: "069a79f4-44e9-4726-a5be-fca90e38aaf5".into(), token: "secret".into(), xuid: String::new(), offline: false };
         let options = Options { memory: 1024, width: 1280, height: 720, ..Default::default() };
         let args = game::arguments(&prepared, &session, &options);
         let mut running = Game::spawn(&prepared.java, &args, &prepared.game_dir).unwrap();

@@ -44,7 +44,7 @@ impl Content {
     #[allow(dead_code)]
     pub fn label(self) -> &'static str {
         match self {
-            Content::Mod => "Fabric mods",
+            Content::Mod => "Mods",
             Content::ResourcePack => "Resource packs",
             Content::Shader => "Shaders",
         }
@@ -186,8 +186,14 @@ fn resource_packs(lines: &[String]) -> Vec<String> {
     option(lines, "resourcePacks").and_then(|v| serde_json::from_str::<Vec<String>>(v).ok()).unwrap_or_default()
 }
 
-fn resolve(core: &Core, game: &str, project: &str, skip: &HashSet<String>, depth: u8, out: &mut Vec<(modrinth::ModVersion, String)>) -> Result<bool, String> {
-    let Some(version) = modrinth::pick(modrinth::versions(&core.http, &core.ep, &core.paths, project, game)?, None) else {
+#[derive(Clone, Copy)]
+struct Target<'a> {
+    game: &'a str,
+    loader: &'a str,
+}
+
+fn resolve(core: &Core, target: Target, project: &str, skip: &HashSet<String>, depth: u8, out: &mut Vec<(modrinth::ModVersion, String)>) -> Result<bool, String> {
+    let Some(version) = modrinth::pick(modrinth::versions(&core.http, &core.ep, &core.paths, project, target.game, target.loader)?, None) else {
         return Ok(false);
     };
     if skip.contains(&version.project_id) || out.iter().any(|(v, _)| v.project_id == version.project_id) {
@@ -198,7 +204,7 @@ fn resolve(core: &Core, game: &str, project: &str, skip: &HashSet<String>, depth
     if depth < 3 {
         for dep in deps {
             if !skip.contains(&dep) {
-                resolve(core, game, &dep, skip, depth + 1, out)?;
+                resolve(core, target, &dep, skip, depth + 1, out)?;
             }
         }
     }
@@ -207,17 +213,17 @@ fn resolve(core: &Core, game: &str, project: &str, skip: &HashSet<String>, depth
 
 type Installed = (Vec<(String, Entry)>, Vec<String>);
 
-fn install_all(core: &Core, content: Content, dir: &Path, game: &str, projects: &[String], skip: &HashSet<String>, threads: usize) -> Result<Installed, String> {
+fn install_all(core: &Core, content: Content, dir: &Path, target: Target, projects: &[String], skip: &HashSet<String>, threads: usize) -> Result<Installed, String> {
     let mut picked = Vec::new();
     let mut missing = Vec::new();
     for project in projects {
         match content {
             Content::Mod => {
-                if !resolve(core, game, project, skip, 0, &mut picked)? {
+                if !resolve(core, target, project, skip, 0, &mut picked)? {
                     missing.push(project.clone());
                 }
             }
-            _ => match modrinth::pick(modrinth::versions_any(&core.http, &core.ep, &core.paths, project, game)?, None) {
+            _ => match modrinth::pick(modrinth::versions_any(&core.http, &core.ep, &core.paths, project, target.game)?, None) {
                 Some(version) => picked.push((version, project.clone())),
                 None => missing.push(project.clone()),
             },
@@ -464,10 +470,11 @@ impl App {
         let profile = self.profile();
         let dir = content.dir(&core, &profile.id);
         let game = self.game_of(&profile);
+        let loader = profile.loader().id();
         let skip = self.skip_projects();
         let threads = self.settings.threads as usize;
         background(move || {
-            let result = install_all(&core, content, &dir, &game, &projects, &skip, threads).map(|(entries, missing)| {
+            let result = install_all(&core, content, &dir, Target { game: &game, loader }, &projects, &skip, threads).map(|(entries, missing)| {
                 let path = content.index_file(&core, &profile.id);
                 let mut index: Index = load_json(&path);
                 let count = entries.len();
@@ -508,6 +515,7 @@ impl App {
         let core = self.core.clone();
         let profile = self.profile();
         let game = self.game_of(&profile);
+        let loader = profile.loader().id();
         let dir = Content::Mod.dir(&core, &profile.id);
         let index = self.mods.index.clone();
         let threads = self.settings.threads as usize;
@@ -516,7 +524,7 @@ impl App {
             let mut jobs = Vec::new();
             let mut replacements = Vec::new();
             for (project, entry) in index.projects {
-                let Ok(list) = modrinth::versions(&core.http, &core.ep, &core.paths, &project, &game) else { continue };
+                let Ok(list) = modrinth::versions(&core.http, &core.ep, &core.paths, &project, &game, loader) else { continue };
                 let Some(version) = modrinth::pick(list, None) else { continue };
                 let Some(file) = version.primary() else { continue };
                 if file.filename == entry.file { continue; }

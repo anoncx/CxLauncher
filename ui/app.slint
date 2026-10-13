@@ -54,6 +54,7 @@ export component AppWindow inherits Window {
     in property <string> client-version;
     in property <string> game-version: "26.2";
     in property <string> loader-label;
+    in property <string> loader-name;
     in property <int> mod-count;
     in property <string> client-game;
     in property <bool> client-on: true;
@@ -266,6 +267,7 @@ export component AppWindow inherits Window {
                             client-version: root.client-version;
                             game-version: root.game-version;
                             loader-label: root.loader-label;
+                            loader-name: root.loader-name;
                             mod-count: root.mod-count;
                             client-on: root.client-on;
                             state: root.state;
@@ -311,7 +313,8 @@ export component AppWindow inherits Window {
                         ModsPage {
                             profile-name: root.profile-name;
                             game-version: root.game-version;
-                            vanilla: root.loader-label == "Vanilla";
+                            vanilla: root.loader-name == "Vanilla";
+                            loader-name: root.loader-name;
                             tab <=> root.mods-tab;
                             content-tab <=> root.content-tab;
                             installed: root.installed;
@@ -395,7 +398,7 @@ export component AppWindow inherits Window {
         Popover {
             for a in root.accounts: MenuPick {
                 title: a.name;
-                detail: a.active ? "Playing as" : "Switch to";
+                detail: (a.offline ? "Cracked  ·  " : "") + (a.active ? "Playing as" : "Switch to");
                 active: a.active;
                 clicked => { root.command("account:" + a.uuid); }
 
@@ -414,6 +417,12 @@ export component AppWindow inherits Window {
             }
 
             MenuAction {
+                icon: Icons.user;
+                title: "Add cracked account";
+                clicked => { root.command("offline-open"); }
+            }
+
+            MenuAction {
                 icon: Icons.signout;
                 title: "Sign out of " + root.account-name;
                 clicked => { root.command("signout"); }
@@ -428,6 +437,7 @@ export component AppWindow inherits Window {
         error: root.signin-error;
         command(id) => { root.command(id); }
         paste(text) => { root.signin-paste(text); }
+        offline(name) => { root.command("offline-add:" + name); }
         close => { root.command("signin-close"); }
     }
 

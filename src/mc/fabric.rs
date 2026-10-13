@@ -1,3 +1,4 @@
+use super::loader::Loader;
 use super::meta::{cached_json, Version};
 use super::Endpoints;
 use crate::net::Http;
@@ -6,7 +7,7 @@ use serde::Deserialize;
 use std::cmp::Ordering;
 
 #[derive(Debug, Deserialize)]
-struct Loader {
+struct LoaderInfo {
     version: String,
     #[serde(default)]
     stable: bool,
@@ -14,7 +15,7 @@ struct Loader {
 
 #[derive(Debug, Deserialize)]
 struct LoaderEntry {
-    loader: Loader,
+    loader: LoaderInfo,
 }
 
 pub fn compare(a: &str, b: &str) -> Ordering {
@@ -33,28 +34,42 @@ pub fn compare(a: &str, b: &str) -> Ordering {
     Ordering::Equal
 }
 
-pub fn latest_loader(http: &Http, ep: &Endpoints, paths: &Paths, game: &str, minimum: Option<&str>) -> Result<String, String> {
-    let url = format!("{}/versions/loader/{game}", ep.fabric_meta.trim_end_matches('/'));
-    let list: Vec<LoaderEntry> = cached_json(http, &url, &paths.meta().join("fabric").join(format!("loaders-{game}.json")))?;
+fn meta_base(ep: &Endpoints, flavor: Loader) -> &str {
+    match flavor {
+        Loader::Quilt => ep.quilt_meta.trim_end_matches('/'),
+        _ => ep.fabric_meta.trim_end_matches('/'),
+    }
+}
+
+fn is_stable(entry: &LoaderEntry, flavor: Loader) -> bool {
+    match flavor {
+        Loader::Quilt => !entry.loader.version.contains('-'),
+        _ => entry.loader.stable,
+    }
+}
+
+pub fn latest_loader(http: &Http, ep: &Endpoints, paths: &Paths, flavor: Loader, game: &str, minimum: Option<&str>) -> Result<String, String> {
+    let url = format!("{}/versions/loader/{game}", meta_base(ep, flavor));
+    let list: Vec<LoaderEntry> = cached_json(http, &url, &paths.meta().join(flavor.id()).join(format!("loaders-{game}.json")))?;
     let fits = |l: &&LoaderEntry| minimum.is_none_or(|m| compare(&l.loader.version, m) != Ordering::Less);
     list.iter()
         .filter(fits)
-        .find(|l| l.loader.stable)
+        .find(|l| is_stable(l, flavor))
         .or_else(|| list.iter().find(fits))
         .map(|l| l.loader.version.clone())
-        .ok_or(format!("Fabric has no loader for Minecraft {game} yet"))
+        .ok_or(format!("{} has no loader for Minecraft {game} yet", flavor.label()))
 }
 
-pub fn profile(http: &Http, ep: &Endpoints, paths: &Paths, game: &str, loader: &str) -> Result<Version, String> {
-    let cache = paths.meta().join("fabric").join(format!("{game}-{loader}.json"));
+pub fn profile(http: &Http, ep: &Endpoints, paths: &Paths, flavor: Loader, game: &str, loader: &str) -> Result<Version, String> {
+    let cache = paths.meta().join(flavor.id()).join(format!("{game}-{loader}.json"));
     if let Ok(text) = std::fs::read_to_string(&cache) {
         if let Ok(v) = serde_json::from_str(&text) {
             return Ok(v);
         }
     }
-    let url = format!("{}/versions/loader/{game}/{loader}/profile/json", ep.fabric_meta.trim_end_matches('/'));
+    let url = format!("{}/versions/loader/{game}/{loader}/profile/json", meta_base(ep, flavor));
     let text = http.text(&url)?;
-    let v: Version = serde_json::from_str(&text).map_err(|e| format!("unexpected Fabric profile ({e})"))?;
+    let v: Version = serde_json::from_str(&text).map_err(|e| format!("unexpected {} profile ({e})", flavor.label()))?;
     let _ = write_atomic(&cache, text.as_bytes());
     Ok(v)
 }

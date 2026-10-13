@@ -190,7 +190,7 @@ impl App {
         let filter = modrinth::Filter {
             game: game.clone(),
             categories: if finder.category.is_empty() { Vec::new() } else { vec![finder.category.clone()] },
-            loader: Some("fabric".to_string()),
+            loader: (kind == Kind::Mod).then(|| profile.loader().id().to_string()),
             sort: finder.sort,
         };
         let core = self.core.clone();
@@ -205,9 +205,10 @@ impl App {
         if generation != self.finder(kind).generation {
             return;
         }
+        let loader = self.profile().loader();
         let what = match &game {
-            Some(g) => format!("Fabric mods for {g}"),
-            None => "Fabric modpacks".to_string(),
+            Some(g) => format!("{} mods for {g}", loader.label()),
+            None => "modpacks".to_string(),
         };
         let (hits, note) = match result {
             Ok(s) if s.hits.is_empty() => (Vec::new(), format!("No {what} match “{query}”.")),

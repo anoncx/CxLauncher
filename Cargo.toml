@@ -28,6 +28,8 @@ open = "5.4.4"
 zip = { version = "8.6.0", default-features = false, features = ["deflate-flate2-zlib-rs"] }
 flate2 = "1"
 regex = "1"
+md-5 = "0.11.0"
+toml = { version = "0.9", default-features = false, features = ["parse", "serde"] }
 
 [build-dependencies]
 slint-build = "1.18"

@@ -15,6 +15,7 @@ export struct AccountItem {
     name: string,
     head: image,
     active: bool,
+    offline: bool,
 }
 
 export struct ProfileItem {
@@ -124,6 +125,7 @@ export struct ProfileEdit {
     glyph: int,
     game: string,
     vanilla: bool,
+    kind: string,
     client: bool,
     server: string,
     loader: string,

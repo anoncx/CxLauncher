@@ -149,10 +149,34 @@ fn split_images(markdown: &str) -> Vec<Block> {
 }
 
 fn push_text(blocks: &mut Vec<Block>, text: &str) {
-    let text = BLANK_RUN.replace_all(text.trim(), "\n\n");
-    if !text.is_empty() && text.chars().any(char::is_alphanumeric) {
-        blocks.push(Block::Text(text.into_owned()));
+    let mut group = String::new();
+    for line in text.lines() {
+        let in_list = group.lines().next().is_some_and(is_list_line);
+        let continues_list = in_list && (is_list_line(line) || line.starts_with(char::is_whitespace) && !line.trim().is_empty());
+        if !continues_list {
+            push_paragraph(blocks, &mut group);
+        }
+        if !line.trim().is_empty() {
+            if !group.is_empty() {
+                group.push('\n');
+            }
+            group.push_str(line);
+        }
     }
+    push_paragraph(blocks, &mut group);
+}
+
+fn push_paragraph(blocks: &mut Vec<Block>, group: &mut String) {
+    let text = std::mem::take(group);
+    if text.chars().any(char::is_alphanumeric) {
+        blocks.push(Block::Text(text));
+    }
+}
+
+fn is_list_line(line: &str) -> bool {
+    let line = line.trim_start();
+    let digits = line.chars().take_while(char::is_ascii_digit).count();
+    ["- ", "* ", "+ "].iter().any(|m| line.starts_with(m)) || digits > 0 && [". ", ") "].iter().any(|m| line[digits..].starts_with(m))
 }
 
 fn web_url(url: &str) -> Option<String> {
@@ -166,6 +190,12 @@ fn web_url(url: &str) -> Option<String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn joined(blocks: &[Block]) -> String {
+        blocks.iter().filter_map(|b| if let Block::Text(t) = b { Some(t.as_str()) } else { None }).collect::<Vec<_>>().join("
+
+")
+    }
 
     fn text(s: &str) -> Block {
         Block::Text(s.into())
@@ -200,20 +230,20 @@ mod tests {
     #[test]
     fn rewrites_unsupported_blocks() {
         let blocks = parse("# Title\n\n> quoted\n\n---\n\n- [x] done\n\n| a | b |\n|---|---|\n| 1 | 2 |");
-        let Block::Text(body) = &blocks[0] else { panic!("expected text") };
+        let body = joined(&blocks);
         assert!(body.starts_with("**Title**"));
         assert!(body.contains("quoted") && !body.contains('>'));
         assert!(!body.contains("---") && !body.contains("[x]"));
         assert!(body.contains("1  ·  2"));
-        assert!(slint::StyledText::from_markdown(body).is_ok());
+        assert!(slint::StyledText::from_markdown(&body).is_ok());
     }
 
     #[test]
     fn details_become_headed_sections_and_stay_valid() {
         let blocks = parse("<details><summary>More</summary>\n\nInside <b>bold</b> and <a href=\"https://x.test\">link</a>\n\n</details>");
-        let Block::Text(body) = &blocks[0] else { panic!("expected text") };
+        let body = joined(&blocks);
         assert!(body.contains("**More**") && body.contains("**bold**") && body.contains("[link](https://x.test)"));
-        assert!(slint::StyledText::from_markdown(body).is_ok());
+        assert!(slint::StyledText::from_markdown(&body).is_ok());
     }
 
     #[test]

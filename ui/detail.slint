@@ -225,7 +225,7 @@ export component ModDetailSheet inherits Rectangle {
     property <bool> zoomed;
 
     sheet := Sheet {
-        card-width: 620px;
+        card-width: 780px;
         close => { root.close(); }
 
         SheetTitle {
@@ -366,9 +366,9 @@ export component ModDetailSheet inherits Rectangle {
             }
 
             if root.body.length > 0: Rectangle {
-                property <length> content-height: prose.preferred-height + 32px;
+                property <length> content-height: prose.preferred-height + 44px;
 
-                height: min(self.content-height, max(180px, root.height - 480px));
+                height: min(self.content-height, max(240px, root.height - 400px));
                 border-radius: 12px;
                 background: Theme.well;
                 border-width: 1px;
@@ -379,10 +379,10 @@ export component ModDetailSheet inherits Rectangle {
                     content-height: parent.content-height;
 
                     prose := VerticalLayout {
-                        x: 16px;
-                        y: 16px;
-                        width: parent.width - 32px;
-                        spacing: 10px;
+                        x: 22px;
+                        y: 22px;
+                        width: parent.width - 44px;
+                        spacing: 14px;
 
                         for block in root.body: BodyBlockView {
                             block: block;

@@ -195,6 +195,31 @@ impl App {
         self.signin_mode(2);
     }
 
+    pub fn offline_open(&mut self) {
+        self.signin.generation.fetch_add(1, Ordering::SeqCst);
+        self.signin.busy = false;
+        if let Some(ui) = self.ui() {
+            ui.set_signin_error("".into());
+        }
+        self.signin_mode(5);
+    }
+
+    pub fn offline_add(&mut self, name: &str) {
+        match auth::offline_account(name) {
+            Ok(account) => {
+                let name = account.name.clone();
+                self.store_account(account, true);
+                self.signin_close();
+                self.toast(format!("Added {name}"));
+            }
+            Err(e) => {
+                if let Some(ui) = self.ui() {
+                    ui.set_signin_error(e.into());
+                }
+            }
+        }
+    }
+
     pub fn signin_web(&mut self) {
         crate::sys::open_url(&auth::authorize_url(&self.core.ep));
     }
@@ -300,6 +325,7 @@ impl App {
                 name: a.name.as_str().into(),
                 head: self.heads.heads.get(&a.uuid).cloned().unwrap_or_default(),
                 active: a.uuid == uuid,
+                offline: a.offline,
             })
             .collect();
         self.models.accounts.set_vec(items);

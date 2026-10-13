@@ -147,6 +147,8 @@ impl App {
             "open-mods-folder" => self.open_mods_folder(),
             "signin" => self.signin_start(),
             "signin-close" => self.signin_close(),
+            "offline-open" => self.offline_open(),
+            "offline-add" => self.offline_add(arg),
             "signin-copy" => self.signin_copy(),
             "signin-open" => self.signin_open(),
             "signin-browser" => self.signin_browser(),

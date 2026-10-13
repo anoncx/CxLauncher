@@ -40,13 +40,16 @@ export component SigninSheet inherits Sheet {
     in property <string> error;
     callback command(string);
     callback paste(string);
+    callback offline(string);
+
+    property <string> username;
 
     card-width: 460px;
 
     SheetTitle {
-        text: "Sign in with Microsoft";
-        badge: "MSA";
-        live: root.mode == 1 || root.mode == 2;
+        text: root.mode == 5 ? "Cracked account" : "Sign in with Microsoft";
+        badge: root.mode == 5 ? "OFFLINE" : "MSA";
+        live: root.mode == 1 || root.mode == 2 || root.mode == 5;
     }
 
     if root.mode == 0 || root.mode == 3: VerticalLayout {
@@ -131,6 +134,11 @@ export component SigninSheet inherits Sheet {
                 clicked => { root.command("signin-browser"); }
             }
 
+            Button {
+                text: "Cracked";
+                clicked => { root.command("offline-open"); }
+            }
+
             Rectangle { horizontal-stretch: 1; }
 
             Button {
@@ -169,6 +177,11 @@ export component SigninSheet inherits Sheet {
                 clicked => { root.command("signin-device"); }
             }
 
+            Button {
+                text: "Cracked account";
+                clicked => { root.command("offline-open"); }
+            }
+
             Rectangle { horizontal-stretch: 1; }
 
             Button {
@@ -176,6 +189,54 @@ export component SigninSheet inherits Sheet {
                 icon: Icons.external;
                 kind: "primary";
                 clicked => { root.command("signin-web"); }
+            }
+        }
+    }
+
+    if root.mode == 5: VerticalLayout {
+        spacing: 14px;
+
+        Text {
+            text: "Pick a username to play without a Microsoft account. It works on singleplayer and on servers with online mode off.";
+            color: Theme.ink-2;
+            wrap: word-wrap;
+        }
+
+        VerticalLayout {
+            spacing: 6px;
+
+            Text {
+                text: "Username";
+                font-size: 11.5px;
+                color: Theme.grey;
+            }
+
+            Input {
+                placeholder: "Steve";
+                edited(t) => { root.username = t; }
+                accepted(t) => { root.offline(t); }
+            }
+
+            if root.error != "": Text {
+                text: root.error;
+                font-size: 11.5px;
+                color: Theme.alert;
+            }
+        }
+
+        HorizontalLayout {
+            spacing: 8px;
+            alignment: end;
+
+            Button {
+                text: "Microsoft sign-in";
+                clicked => { root.command("signin"); }
+            }
+
+            Button {
+                text: "Add account";
+                kind: "primary";
+                clicked => { root.offline(root.username); }
             }
         }
     }
@@ -206,6 +267,13 @@ export component SigninSheet inherits Sheet {
         HorizontalLayout {
             spacing: 8px;
             alignment: end;
+
+            Button {
+                text: "Cracked account";
+                clicked => { root.command("offline-open"); }
+            }
+
+            Rectangle { horizontal-stretch: 1; }
 
             Button {
                 text: "Close";
@@ -241,6 +309,9 @@ export component ProfileSheet inherits Sheet {
     property <int> glyph: data.glyph;
     property <string> game: data.game;
     property <bool> vanilla: data.vanilla;
+    property <string> kind: data.kind;
+    property <bool> client-ok: !root.vanilla && root.kind == "fabric";
+    property <string> loader-name: root.kind == "quilt" ? "Quilt" : root.kind == "forge" ? "Forge" : root.kind == "neoforge" ? "NeoForge" : "Fabric";
     property <bool> client: data.client;
     property <bool> fits: root.game == "" || root.game == root.client-game;
     property <string> server: data.server;
@@ -334,22 +405,28 @@ export component ProfileSheet inherits Sheet {
                 }
             }
         }
+    }
 
-        VerticalLayout {
-            spacing: 6px;
+    VerticalLayout {
+        spacing: 6px;
 
-            Text {
-                text: "Loader";
-                font-size: 11.5px;
-                color: Theme.grey;
-            }
+        Text {
+            text: "Loader";
+            font-size: 11.5px;
+            color: Theme.grey;
+        }
 
-            Segmented {
-                items: ["Fabric", "Vanilla"];
-                current: root.vanilla ? 1 : 0;
-                segment: 80px;
-                tall: 32px;
-                changed(i) => { root.vanilla = i == 1; }
+        Segmented {
+            items: ["Fabric", "Quilt", "Forge", "NeoForge", "Vanilla"];
+            current: root.vanilla ? 4 : root.kind == "quilt" ? 1 : root.kind == "forge" ? 2 : root.kind == "neoforge" ? 3 : 0;
+            segment: 86px;
+            tall: 32px;
+            changed(i) => {
+                root.vanilla = i == 4;
+                if (i < 4) {
+                    root.kind = ["fabric", "quilt", "forge", "neoforge"][i];
+                    root.loader = "";
+                }
             }
         }
     }
@@ -375,9 +452,9 @@ export component ProfileSheet inherits Sheet {
                         color: Theme.ink;
                     }
                     Text {
-                        text: root.vanilla ? "Needs the Fabric loader." : !root.fits && root.client ? "CxVisuals is made for Minecraft " + root.client-game + ". Pick that version or turn it off." : root.client ? "CxVisuals and Fabric API are added and kept up to date." : "Off. Only the mods you add.";
+                        text: !root.client-ok ? "CxVisuals needs the Fabric loader." : !root.fits && root.client ? "CxVisuals is made for Minecraft " + root.client-game + ". Pick that version or turn it off." : root.client ? "CxVisuals and Fabric API are added and kept up to date." : "Off. Only the mods you add.";
                         font-size: 12px;
-                        color: !root.vanilla && !root.fits && root.client ? Theme.alert : Theme.grey;
+                        color: root.client-ok && !root.fits && root.client ? Theme.alert : Theme.grey;
                         wrap: word-wrap;
                     }
                 }
@@ -385,8 +462,8 @@ export component ProfileSheet inherits Sheet {
                 VerticalLayout {
                     alignment: center;
                     Toggle {
-                        checked: root.client && !root.vanilla;
-                        opacity: root.vanilla ? 0.4 : 1;
+                        checked: root.client && root.client-ok;
+                        opacity: root.client-ok ? 1 : 0.4;
                         toggled(on) => { root.client = on; }
                     }
                 }
@@ -428,7 +505,7 @@ export component ProfileSheet inherits Sheet {
                     alignment: center;
                     horizontal-stretch: 1;
                     Text {
-                        text: "Fabric loader";
+                        text: root.loader-name + " version";
                         color: Theme.ink;
                     }
                 }
@@ -584,6 +661,7 @@ export component ProfileSheet inherits Sheet {
                     glyph: root.glyph,
                     game: root.game,
                     vanilla: root.vanilla,
+                    kind: root.kind,
                     client: root.client,
                     server: root.server,
                     loader: root.loader,
