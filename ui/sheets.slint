@@ -1,6 +1,7 @@
 import { Theme } from "theme.slint";
 import { Button, Icon, Icons, Input, Segmented, Select, Sheet, SheetTitle, Spinner, Toggle } from "components.slint";
-import { Command, ProfileEdit, ShotItem, WorldItem } from "types.slint";
+import { VersionSelect } from "versions.slint";
+import { Command, ProfileEdit, ShotItem, VersionItem, WorldItem } from "types.slint";
 
 component Step inherits HorizontalLayout {
     in property <int> n;
@@ -223,7 +224,7 @@ export component SigninSheet inherits Sheet {
 export component ProfileSheet inherits Sheet {
     in property <ProfileEdit> data;
     in property <bool> can-delete;
-    in property <[Command]> versions;
+    in property <[VersionItem]> versions;
     in property <[Command]> profile-javas;
     in property <string> client-game;
     in property <[WorldItem]> worlds;
@@ -231,6 +232,10 @@ export component ProfileSheet inherits Sheet {
     in property <int> shot-count;
     callback save(ProfileEdit);
     callback command(string);
+
+    function filter-versions() {
+        root.command("filter-versions:" + (root.include-snapshots ? "1" : "0") + root.version-query);
+    }
 
     property <string> name: data.name;
     property <int> glyph: data.glyph;
@@ -241,7 +246,8 @@ export component ProfileSheet inherits Sheet {
     property <string> server: data.server;
     property <string> loader: data.loader;
     property <string> java: data.java;
-    property <bool> include-snapshots;
+    property <bool> include-snapshots: data.include-snapshots;
+    property <string> version-query;
     property <bool> confirm;
 
     card-width: 480px;
@@ -316,12 +322,16 @@ export component ProfileSheet inherits Sheet {
                 color: Theme.grey;
             }
 
-            Select {
+            VersionSelect {
                 options: root.versions;
                 current: root.game;
                 label: root.game == "" ? "Automatic" : root.game;
-                menu-width: 260px;
+                window-height: root.height;
                 selected(id) => { root.game = id; }
+                query-changed(query) => {
+                    root.version-query = query;
+                    root.filter-versions();
+                }
             }
         }
 
@@ -459,7 +469,10 @@ export component ProfileSheet inherits Sheet {
                 }
                 Toggle {
                     checked: root.include-snapshots;
-                    toggled(on) => { root.include-snapshots = on; }
+                    toggled(on) => {
+                        root.include-snapshots = on;
+                        root.filter-versions();
+                    }
                 }
             }
         }
@@ -577,6 +590,7 @@ export component ProfileSheet inherits Sheet {
                     pack: root.data.pack,
                     java: root.java,
                     servers: root.data.servers,
+                    include-snapshots: root.include-snapshots,
                 });
             }
         }

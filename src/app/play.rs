@@ -1,4 +1,4 @@
-use super::{background, later, App};
+use super::{background, later, profiles, App};
 use crate::auth::{self, Account};
 use crate::client;
 use crate::download::Progress;
@@ -26,7 +26,7 @@ pub struct Info {
     pub client_game: String,
     pub latest: String,
     pub releases: Vec<String>,
-    pub versions: Vec<String>,
+    pub versions: Vec<profiles::VersionEntry>,
     pub loaders: HashMap<String, String>,
     pub notes: Vec<String>,
     pub error: String,
@@ -334,7 +334,7 @@ impl App {
             let loader = fabric::latest_loader(&core.http, &core.ep, &core.paths, &game, minimum.as_deref()).unwrap_or_default();
             let manifest = crate::mc::meta::manifest(&core.http, &core.ep, &core.paths).unwrap_or_default();
             let releases: Vec<String> = manifest.releases().map(|v| v.id.clone()).collect();
-            let versions: Vec<String> = manifest.versions.iter().map(|v| v.id.clone()).collect();
+            let versions: Vec<profiles::VersionEntry> = manifest.versions.iter().map(|v| profiles::VersionEntry { id: v.id.clone(), kind: v.kind.clone() }).collect();
             let latest = manifest.latest.release.clone();
             later(move |app| {
                 app.info.name = name;

@@ -97,7 +97,6 @@ pub struct GalleryImage {
     #[serde(default)]
     pub url: String,
     #[serde(default)]
-    #[allow(dead_code)]
     pub title: Option<String>,
     #[serde(default)]
     pub featured: bool,
@@ -157,10 +156,11 @@ pub struct Project {
 }
 
 impl Project {
-    pub fn gallery_urls(&self) -> Vec<String> {
-        let mut urls: Vec<String> = self.gallery.iter().filter(|g| g.featured).map(|g| g.url.clone()).collect();
-        urls.extend(self.gallery.iter().filter(|g| !g.featured).map(|g| g.url.clone()));
-        urls
+    pub fn gallery_entries(&self) -> Vec<(String, String)> {
+        let entry = |g: &GalleryImage| (g.url.clone(), g.title.clone().unwrap_or_default());
+        let mut entries: Vec<_> = self.gallery.iter().filter(|g| g.featured).map(entry).collect();
+        entries.extend(self.gallery.iter().filter(|g| !g.featured).map(entry));
+        entries
     }
 
     pub fn links(&self) -> Vec<(String, String)> {
@@ -329,6 +329,6 @@ mod tests {
         let links = p.links();
         assert_eq!(links[0].0, "Modrinth");
         assert_eq!(links[1].0, "Source");
-        assert_eq!(p.gallery_urls(), vec!["a".to_string(), "b".to_string()]);
+        assert_eq!(p.gallery_entries().into_iter().map(|(url, _)| url).collect::<Vec<_>>(), vec!["a".to_string(), "b".to_string()]);
     }
 }

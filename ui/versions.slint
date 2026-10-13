@@ -1,0 +1,246 @@
+import { Theme } from "theme.slint";
+import { Icon, Icons, Input } from "components.slint";
+import { VersionItem } from "types.slint";
+
+component ListView inherits Rectangle {
+    in-out property <length> content-y <=> flick.content-y;
+    in-out property <length> content-width <=> flick.content-width;
+    in-out property <length> content-height <=> flick.content-height;
+    out property <length> visible-width: flick.width;
+    out property <length> visible-height: flick.height;
+
+    clip: true;
+
+    flick := Flickable {
+        @children
+    }
+
+    if root.content-height > root.height: Rectangle {
+        property <float> part: root.height / root.content-height;
+        x: root.width - 7px;
+        y: 4px + (-root.content-y / (root.content-height - root.height)) * (root.height - 8px - self.height);
+        width: 4px;
+        height: max(28px, (root.height - 8px) * part);
+        border-radius: 2px;
+        background: Theme.grey;
+        opacity: 0.35;
+    }
+}
+
+component Tag inherits Rectangle {
+    in property <string> text;
+
+    height: 16px;
+    width: label.preferred-width + 12px;
+    border-radius: 5px;
+    background: Theme.surface-2;
+
+    label := Text {
+        text: root.text;
+        font-size: 9px;
+        font-weight: 600;
+        color: Theme.grey;
+        horizontal-alignment: center;
+        vertical-alignment: center;
+    }
+}
+
+component VersionRow inherits Rectangle {
+    in property <VersionItem> item;
+    in property <bool> selected;
+    callback chosen();
+
+    height: 34px;
+    border-radius: 8px;
+    background: touch.has-hover ? Theme.surface-2 : transparent;
+    animate background { duration: Theme.quick; }
+
+    touch := TouchArea {
+        mouse-cursor: MouseCursor.pointer;
+        clicked => { root.chosen(); }
+    }
+
+    HorizontalLayout {
+        padding-left: 10px;
+        padding-right: 10px;
+        spacing: 8px;
+
+        Text {
+            text: root.item.title;
+            font-size: 12.5px;
+            font-weight: root.selected ? 600 : 500;
+            color: Theme.ink;
+            vertical-alignment: center;
+        }
+
+        if root.item.detail != "": Text {
+            text: root.item.detail;
+            font-size: 11px;
+            color: Theme.grey;
+            vertical-alignment: center;
+            overflow: elide;
+            horizontal-stretch: 1;
+        }
+
+        if root.item.detail == "": Rectangle { horizontal-stretch: 1; }
+
+        if root.item.tag != "": VerticalLayout {
+            alignment: center;
+            Tag { text: root.item.tag; }
+        }
+
+        VerticalLayout {
+            alignment: center;
+            Icon {
+                width: root.selected ? 13px : 0;
+                height: 13px;
+                visible: root.selected;
+                commands: Icons.check;
+                tint: Theme.accent;
+            }
+        }
+    }
+}
+
+export component VersionSelect inherits Rectangle {
+    in property <[VersionItem]> options;
+    in property <string> current;
+    in property <string> label;
+    in property <length> window-height;
+    in property <length> menu-width: 300px;
+    callback selected(string);
+    callback query-changed(string);
+
+    property <length> header-height: 53px;
+    property <length> list-height: max(64px, root.options.length * 34px + 12px);
+    property <length> room;
+    property <bool> opens-up;
+    property <length> menu-height: min(min(root.room, 420px), root.header-height + root.list-height);
+
+    height: 32px;
+    min-width: text.preferred-width + 44px;
+    border-radius: 9px;
+    background: touch.has-hover ? Theme.surface : Theme.surface-2;
+    border-width: 1px;
+    border-color: touch.has-hover ? Theme.hair : transparent;
+    accessible-role: combobox;
+    accessible-value: root.label;
+    transform-scale: touch.pressed ? 0.96 : 1;
+    animate background { duration: Theme.quick; }
+    animate transform-scale { duration: Theme.bounce; easing: cubic-bezier(0.34, 1.56, 0.64, 1); }
+
+    function open-menu() {
+        let below = root.window-height - root.absolute-position.y - root.height - 16px;
+        let above = root.absolute-position.y - 16px;
+        root.opens-up = below < 280px && above > below;
+        root.room = root.opens-up ? above : below;
+        root.query-changed("");
+        menu.show();
+    }
+
+    function choose(id: string) {
+        menu.close();
+        root.selected(id);
+    }
+
+    touch := TouchArea {
+        mouse-cursor: MouseCursor.pointer;
+        clicked => { root.open-menu(); }
+    }
+
+    text := Text {
+        x: 10px;
+        width: root.width - 34px;
+        text: root.label;
+        font-weight: 500;
+        font-size: 12.5px;
+        overflow: elide;
+        color: Theme.ink;
+    }
+
+    Icon {
+        x: root.width - 21px;
+        width: 12px;
+        height: 12px;
+        commands: Icons.down;
+    }
+
+    menu := PopupWindow {
+        x: 0;
+        y: root.opens-up ? -root.menu-height - 4px : root.height + 4px;
+        width: max(root.width, root.menu-width);
+        height: root.menu-height;
+        close-policy: PopupClosePolicy.close-on-click-outside;
+
+        Rectangle {
+            border-radius: 12px;
+            background: Theme.surface;
+            border-width: 1px;
+            border-color: Theme.hair;
+            drop-shadow-blur: 28px;
+            drop-shadow-offset-y: 10px;
+            drop-shadow-color: Theme.shadow;
+            clip: true;
+
+            init => { search.focus-field(); }
+
+            FocusScope {
+                y: 0;
+                height: root.header-height - 1px;
+                width: parent.width;
+
+                key-pressed(e) => {
+                    if (e.text == Key.Escape) {
+                        menu.close();
+                        return accept;
+                    }
+                    return reject;
+                }
+
+                search := Input {
+                    x: 10px;
+                    y: 10px;
+                    width: parent.width - 20px;
+                    placeholder: "Search versions";
+                    icon: Icons.search;
+                    edited(query) => { root.query-changed(query); }
+                    accepted => {
+                        if (root.options.length > 0) {
+                            root.choose(root.options[0].id);
+                        }
+                    }
+                }
+            }
+
+            Rectangle {
+                y: root.header-height - 1px;
+                height: 1px;
+                width: parent.width;
+                background: Theme.hair;
+            }
+
+            if root.options.length == 0: Text {
+                y: root.header-height + 16px;
+                width: parent.width;
+                text: "No versions match";
+                font-size: 12px;
+                color: Theme.grey;
+                horizontal-alignment: center;
+            }
+
+            ListView {
+                y: root.header-height + 6px;
+                width: parent.width;
+                height: parent.height - root.header-height - 6px;
+
+                for option in root.options: VersionRow {
+                    x: 6px;
+                    width: parent.width - 12px;
+                    item: option;
+                    selected: option.id == root.current;
+                    chosen => { root.choose(option.id); }
+                }
+            }
+        }
+    }
+}

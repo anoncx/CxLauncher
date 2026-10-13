@@ -5,7 +5,7 @@ use crate::download::Progress;
 use crate::mc::{modrinth, mrpack};
 use crate::store::{new_id, Profile};
 use crate::sys::{ago, duration, now};
-use crate::{Command, ProfileEdit, ProfileItem};
+use crate::{Command, ProfileEdit, ProfileItem, VersionItem};
 use std::path::{Path, PathBuf};
 
 pub(crate) fn copy_dir(from: &Path, to: &Path) {
@@ -29,6 +29,38 @@ fn stats(p: &Profile) -> String {
     match p.played {
         0 => "Never played".into(),
         s => format!("{} played  ·  {}", duration(s), ago(p.last_played, now()).to_lowercase()),
+    }
+}
+
+pub struct VersionEntry {
+    pub id: String,
+    pub kind: String,
+}
+
+impl VersionEntry {
+    fn tag(&self) -> &'static str {
+        match self.kind.as_str() {
+            "snapshot" => "SNAPSHOT",
+            "old_beta" => "BETA",
+            "old_alpha" => "ALPHA",
+            _ => "",
+        }
+    }
+}
+
+#[derive(Default)]
+pub struct VersionFilter {
+    snapshots: bool,
+    query: String,
+}
+
+impl VersionFilter {
+    fn parse(arg: &str) -> Self {
+        Self { snapshots: arg.starts_with('1'), query: arg.get(1..).unwrap_or_default().trim().to_lowercase() }
+    }
+
+    fn admits(&self, version: &VersionEntry) -> bool {
+        (self.snapshots || version.kind == "release") && version.id.to_lowercase().contains(&self.query)
     }
 }
 
@@ -63,9 +95,27 @@ impl App {
         ui.set_profile_glyph(current.glyph.clamp(0, 5));
         let client = if self.info.client_game.is_empty() { crate::client::GAME.to_string() } else { self.info.client_game.clone() };
         ui.set_client_game(client.as_str().into());
-        let mut versions = vec![Command { id: "".into(), title: "Automatic".into(), detail: format!("CxVisuals {client}, otherwise the latest release").into() }];
-        versions.extend(self.info.versions.iter().take(120).map(|v| Command { id: v.as_str().into(), title: v.as_str().into(), detail: Default::default() }));
+        self.refresh_versions();
+    }
+
+    fn refresh_versions(&self) {
+        let filter = &self.version_filter;
+        let client = if self.info.client_game.is_empty() { crate::client::GAME } else { &self.info.client_game };
+        let mut versions = Vec::new();
+        if filter.query.is_empty() {
+            versions.push(VersionItem { id: "".into(), title: "Automatic".into(), detail: format!("CxVisuals {client}, otherwise the latest release").into(), tag: "".into() });
+        }
+        versions.extend(self.info.versions.iter().filter(|v| filter.admits(v)).map(|v| VersionItem { id: v.id.as_str().into(), title: v.id.as_str().into(), detail: "".into(), tag: v.tag().into() }));
         self.models.versions.set_vec(versions);
+    }
+
+    pub fn filter_versions(&mut self, arg: &str) {
+        self.version_filter = VersionFilter::parse(arg);
+        self.refresh_versions();
+    }
+
+    fn needs_snapshots(&self, game: &str) -> bool {
+        self.info.versions.iter().any(|v| v.id == game && v.kind != "release")
     }
 
     fn busy_with(&self, id: &str) -> bool {
@@ -106,6 +156,9 @@ impl App {
             Some("") => self.profile(),
             Some(id) => self.profiles.get(id).cloned().unwrap_or_else(|| self.profile()),
         };
+        let include_snapshots = p.include_snapshots || self.needs_snapshots(&p.game);
+        self.version_filter = VersionFilter { snapshots: include_snapshots, query: String::new() };
+        self.refresh_versions();
         ui.set_profile_edit(ProfileEdit {
             id: p.id.as_str().into(),
             name: p.name.as_str().into(),
@@ -118,6 +171,7 @@ impl App {
             pack: p.pack.as_str().into(),
             java: p.java.as_str().into(),
             servers: slint::ModelRc::from(&*p.servers.iter().map(|s| Command { id: s.address.as_str().into(), title: if s.name.is_empty() { s.address.as_str().into() } else { s.name.as_str().into() }, detail: s.address.as_str().into() }).collect::<Vec<_>>()),
+            include_snapshots,
         });
         ui.set_profile_open(true);
         if !p.id.is_empty() {
@@ -138,6 +192,7 @@ impl App {
             p.vanilla = edit.vanilla;
             p.client = edit.client;
             p.server = edit.server.trim().to_string();
+            p.include_snapshots = edit.include_snapshots;
             p.loader = edit.loader.trim().to_string();
             p.java = edit.java.trim().to_string();
             p.server = edit.server.trim().to_string();

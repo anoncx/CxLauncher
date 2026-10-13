@@ -13,9 +13,9 @@ import { ConsolePage } from "console.slint";
 import { SettingsPage } from "settings.slint";
 import { ProfileSheet, SigninSheet } from "sheets.slint";
 import { ModDetailSheet } from "detail.slint";
-import { AccountItem, Command, FindItem, JavaItem, LogLine, ModImage, ModItem, ModDetail, ModLink, NavItem, ProfileEdit, ProfileItem, SettingsView, ShotItem, WorldItem } from "types.slint";
+import { AccountItem, BodyBlock, Command, FindItem, JavaItem, LogLine, ModImage, ModItem, ModDetail, ModLink, NavItem, ProfileEdit, ProfileItem, SettingsView, ShotItem, VersionItem, WorldItem } from "types.slint";
 
-export { Theme, AccountItem, Command, FindItem, JavaItem, LogLine, ModImage, ModItem, ModDetail, ModLink, NavItem, ProfileEdit, ProfileItem, SettingsView, ShotItem, WorldItem }
+export { Theme, AccountItem, BodyBlock, Command, FindItem, JavaItem, LogLine, ModImage, ModItem, ModDetail, ModLink, NavItem, ProfileEdit, ProfileItem, SettingsView, ShotItem, VersionItem, WorldItem }
 
 component Page inherits Rectangle {
     property <float> shown: 0;
@@ -74,7 +74,7 @@ export component AppWindow inherits Window {
     in property <[FindItem]> packs;
     in property <bool> packs-searching;
     in property <string> packs-note;
-    in property <[Command]> versions;
+    in property <[VersionItem]> versions;
     in property <[Command]> profile-javas;
 
     in-out property <int> mods-tab;
@@ -118,6 +118,7 @@ export component AppWindow inherits Window {
     in property <ModDetail> mod-detail;
     in property <[ModLink]> links;
     in property <[ModImage]> gallery;
+    in property <[BodyBlock]> body;
 
     in property <string> toast;
     in property <int> toast-serial;
@@ -448,6 +449,7 @@ export component AppWindow inherits Window {
         item: root.mod-detail;
         links: root.links;
         gallery: root.gallery;
+        body: root.body;
         command(id) => { root.command(id); }
         install(id) => { root.command("install-mod:" + id); }
         close => { root.command("detail-close"); }

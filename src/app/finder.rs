@@ -1,14 +1,16 @@
-use super::images::thumb;
+use super::images::{fit, thumb, Pixels};
+use super::markdown::{self, Block};
 use super::{background, first_letter, later, row_index, App, Core};
 use crate::download::hex;
 use crate::mc::modrinth;
 use crate::paths::write_atomic;
-use crate::{FindItem, ModDetail, ModImage, ModLink};
+use crate::{BodyBlock, FindItem, ModDetail, ModImage, ModLink};
 use sha1::{Digest, Sha1};
-use slint::{Image, Model, VecModel};
+use slint::{Image, Model, StyledText, VecModel};
 use std::collections::HashSet;
 use std::path::PathBuf;
 use std::rc::Rc;
+use std::sync::Arc;
 use std::time::Duration;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -81,6 +83,36 @@ fn icon_cache(core: &Core, url: &str) -> PathBuf {
     let mut h = Sha1::new();
     h.update(url.as_bytes());
     core.paths.cache().join("icons").join(hex(&h.finalize()))
+}
+
+const GALLERY_EDGE: u32 = 1280;
+const BODY_EDGE: u32 = 1024;
+const GALLERY_LIMIT: usize = 12;
+
+fn fetch_image(core: &Core, url: &str, edge: u32) -> Option<Pixels> {
+    let cache = icon_cache(core, url);
+    let bytes = std::fs::read(&cache).ok().or_else(|| {
+        let bytes = core.http.bytes(url, 8 << 20).ok()?;
+        let _ = write_atomic(&cache, &bytes);
+        Some(bytes)
+    })?;
+    fit(&bytes, edge)
+}
+
+fn body_row(block: &Block) -> BodyBlock {
+    match block {
+        Block::Text(markdown) => BodyBlock {
+            text: StyledText::from_markdown(markdown).unwrap_or_else(|_| StyledText::from_plain_text(markdown)),
+            state: 1,
+            ..Default::default()
+        },
+        Block::Image { alt, link, .. } => BodyBlock {
+            is_image: true,
+            alt: alt.as_str().into(),
+            link: link.as_deref().unwrap_or_default().into(),
+            ..Default::default()
+        },
+    }
 }
 
 impl App {
@@ -244,6 +276,9 @@ impl App {
         } else {
             0
         };
+        self.models.links.clear();
+        self.models.gallery.clear();
+        self.models.body.clear();
         if let Some(ui) = self.ui() {
             ui.set_mod_detail(ModDetail {
                 id: id.into(),
@@ -299,38 +334,14 @@ impl App {
                 let links: Vec<ModLink> = p.links().into_iter().map(|(label, url)| ModLink { label: label.into(), url: url.into() }).collect();
                 self.models.links.set_vec(links);
                 let has_icon = icon.is_some();
-                let gallery = p.gallery_urls();
-                let core = self.core.clone();
-                let gallery_images: Vec<ModImage> = gallery.iter().map(|_| ModImage { image: Image::default(), has_image: false, title: String::new().into() }).collect();
-                self.models.gallery.set_vec(gallery_images);
-                let gallery_id = p.id.clone();
-                background(move || {
-                    for (i, url) in gallery.iter().take(6).enumerate() {
-                        let cached = {
-                            let cache = icon_cache(&core, url);
-                            std::fs::read(&cache).ok().or_else(|| {
-                                let bytes = core.http.bytes(url, 4 << 20).ok()?;
-                                let _ = write_atomic(&cache, &bytes);
-                                Some(bytes)
-                            })
-                        };
-                        let Some(px) = cached.and_then(|b| thumb(&b, 720)) else { continue };
-                        later(move |app| {
-                            if app.finder(kind).detail_gen != generation { return; }
-                            if let Some(row) = app.models.gallery.row_data(i) {
-                                app.models.gallery.set_row_data(i, ModImage { image: Image::from_rgba8(px), has_image: true, title: row.title });
-                            }
-                        });
-                    }
-                    let _ = gallery_id;
-                });
+                self.show_gallery(kind, generation, p.gallery_entries());
+                self.show_body(kind, generation, markdown::parse(&p.body));
                 ui.set_mod_detail(ModDetail {
                     id: p.id.clone().into(),
                     slug: p.slug.as_str().into(),
                     title: p.title.as_str().into(),
                     author: author.into(),
                     description: p.description.as_str().into(),
-                    body: p.body.as_str().into(),
                     downloads: commas(p.downloads).into(),
                     followers: commas(p.followers).into(),
                     license: p.license.id.as_str().into(),
@@ -349,9 +360,58 @@ impl App {
                 });
             }
             Err(e) => {
-                ui.set_mod_detail(ModDetail { loading: false, body: format!("Could not load this project ({e}).").into(), ..Default::default() });
+                self.show_body(kind, generation, vec![Block::Text(format!("Could not load this project ({e})."))]);
+                ui.set_mod_detail(ModDetail { loading: false, ..Default::default() });
             }
         }
+    }
+
+    fn show_gallery(&mut self, kind: Kind, generation: u64, entries: Vec<(String, String)>) {
+        let entries: Vec<_> = entries.into_iter().take(GALLERY_LIMIT).collect();
+        self.models.gallery.set_vec(entries.iter().map(|(_, title)| ModImage { title: title.as_str().into(), ..Default::default() }).collect::<Vec<_>>());
+        let urls = entries.into_iter().map(|(url, _)| url).collect();
+        self.load_images(kind, generation, urls, GALLERY_EDGE, |app, row, pixels| {
+            let Some(mut item) = app.models.gallery.row_data(row) else { return };
+            item.has_image = pixels.is_some();
+            item.failed = pixels.is_none();
+            item.image = pixels.map(Image::from_rgba8).unwrap_or_default();
+            app.models.gallery.set_row_data(row, item);
+        });
+    }
+
+    fn show_body(&mut self, kind: Kind, generation: u64, blocks: Vec<Block>) {
+        self.models.body.set_vec(blocks.iter().map(body_row).collect::<Vec<_>>());
+        let images = blocks.into_iter().enumerate().filter_map(|(row, block)| match block {
+            Block::Image { url, .. } => Some((row, url)),
+            Block::Text(_) => None,
+        });
+        let (rows, urls): (Vec<usize>, Vec<String>) = images.unzip();
+        self.load_images(kind, generation, urls, BODY_EDGE, move |app, i, pixels| {
+            let row = rows[i];
+            let Some(mut block) = app.models.body.row_data(row) else { return };
+            block.state = if pixels.is_some() { 1 } else { 2 };
+            block.image = pixels.map(Image::from_rgba8).unwrap_or_default();
+            app.models.body.set_row_data(row, block);
+        });
+    }
+
+    fn load_images(&self, kind: Kind, generation: u64, urls: Vec<String>, edge: u32, apply: impl Fn(&mut App, usize, Option<Pixels>) + Send + Sync + 'static) {
+        if urls.is_empty() {
+            return;
+        }
+        let core = self.core.clone();
+        let apply = Arc::new(apply);
+        background(move || {
+            for (i, url) in urls.iter().enumerate() {
+                let pixels = fetch_image(&core, url, edge);
+                let apply = Arc::clone(&apply);
+                later(move |app| {
+                    if app.finder(kind).detail_gen == generation {
+                        apply(app, i, pixels);
+                    }
+                });
+            }
+        });
     }
 
     pub fn detail_install(&mut self, id: &str) {

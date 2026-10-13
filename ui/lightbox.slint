@@ -1,0 +1,80 @@
+import { Theme } from "theme.slint";
+import { Icon, Icons } from "components.slint";
+
+export component Lightbox inherits Rectangle {
+    in property <image> source;
+    in property <string> caption;
+    callback close();
+
+    property <float> shown: 0;
+    property <length> margin: 40px;
+    property <length> caption-height: root.caption == "" ? 0px : 36px;
+
+    init => {
+        self.shown = 1;
+        keys.focus();
+    }
+
+    background: #000000e6;
+    opacity: root.shown;
+    animate opacity { duration: Theme.calm ? 0ms : 180ms; }
+
+    keys := FocusScope {
+        key-pressed(e) => {
+            if (e.text == Key.Escape) {
+                root.close();
+                return accept;
+            }
+            return reject;
+        }
+
+        TouchArea {
+            mouse-cursor: MouseCursor.pointer;
+            clicked => { root.close(); }
+        }
+    }
+
+    Image {
+        x: root.margin;
+        y: root.margin;
+        width: root.width - root.margin * 2;
+        height: root.height - root.margin * 2 - root.caption-height;
+        source: root.source;
+        image-fit: contain;
+        transform-scale: 0.96 + 0.04 * root.shown;
+        animate transform-scale { duration: Theme.calm ? 0ms : 320ms; easing: cubic-bezier(0.34, 1.56, 0.64, 1); }
+    }
+
+    if root.caption != "": Text {
+        x: root.margin;
+        y: root.height - root.margin - 20px;
+        width: root.width - root.margin * 2;
+        text: root.caption;
+        font-size: 12.5px;
+        color: #ffffffcc;
+        horizontal-alignment: center;
+        overflow: elide;
+    }
+
+    Rectangle {
+        x: root.width - self.width - 16px;
+        y: 16px;
+        width: 36px;
+        height: 36px;
+        border-radius: 18px;
+        background: close-touch.has-hover ? #ffffff33 : #ffffff1f;
+        animate background { duration: Theme.quick; }
+
+        close-touch := TouchArea {
+            mouse-cursor: MouseCursor.pointer;
+            clicked => { root.close(); }
+        }
+
+        Icon {
+            width: 16px;
+            height: 16px;
+            commands: Icons.close;
+            tint: #ffffff;
+        }
+    }
+}

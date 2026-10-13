@@ -3,6 +3,7 @@ mod console;
 mod finder;
 mod images;
 mod instance;
+mod markdown;
 mod mods;
 mod play;
 mod profiles;
@@ -33,12 +34,13 @@ struct Models {
     installed: Rc<VecModel<crate::ModItem>>,
     results: Rc<VecModel<crate::FindItem>>,
     packs: Rc<VecModel<crate::FindItem>>,
-    versions: Rc<VecModel<crate::Command>>,
+    versions: Rc<VecModel<crate::VersionItem>>,
     log: Rc<VecModel<crate::LogLine>>,
     javas: Rc<VecModel<crate::Command>>,
     notes: Rc<VecModel<SharedString>>,
     links: Rc<VecModel<crate::ModLink>>,
     gallery: Rc<VecModel<crate::ModImage>>,
+    body: Rc<VecModel<crate::BodyBlock>>,
     worlds: Rc<VecModel<crate::WorldItem>>,
     shots: Rc<VecModel<crate::ShotItem>>,
     categories: Rc<VecModel<crate::Command>>,
@@ -61,6 +63,7 @@ pub struct App {
     packs: finder::Finder,
     javas: Vec<crate::mc::java::Installed>,
     info: play::Info,
+    version_filter: profiles::VersionFilter,
     ticker: slint::Timer,
     timers: Vec<slint::Timer>,
 }
@@ -175,6 +178,7 @@ impl App {
             "open-mod" => self.open_detail(finder::Kind::Mod, arg),
             "open-pack" => self.open_detail(finder::Kind::Pack, arg),
             "open-link" => crate::sys::open_url(arg),
+            "filter-versions" => self.filter_versions(arg),
             "detail-close" => self.close_detail(),
             "duplicate-profile" => self.duplicate_profile(arg),
             "open-instance" => self.open_instance(arg),
@@ -259,6 +263,7 @@ pub fn run() -> Result<(), slint::PlatformError> {
     ui.set_notes(ModelRc::from(models.notes.clone()));
     ui.set_links(ModelRc::from(models.links.clone()));
     ui.set_gallery(ModelRc::from(models.gallery.clone()));
+    ui.set_body(ModelRc::from(models.body.clone()));
     ui.set_mod_categories(ModelRc::from(models.categories.clone()));
     ui.set_sorts(ModelRc::from(models.sorts.clone()));
     ui.set_worlds(ModelRc::from(models.worlds.clone()));
@@ -285,6 +290,7 @@ pub fn run() -> Result<(), slint::PlatformError> {
         packs: finder::Finder::default(),
         javas: Vec::new(),
         info: play::Info { online: -1, ..Default::default() },
+        version_filter: Default::default(),
         ticker: slint::Timer::default(),
         timers: Vec::new(),
     }));

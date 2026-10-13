@@ -13,6 +13,12 @@ pub fn thumb(bytes: &[u8], size: u32) -> Option<Pixels> {
     Some(pixels(&img.to_rgba8()))
 }
 
+pub fn fit(bytes: &[u8], edge: u32) -> Option<Pixels> {
+    let img = image::load_from_memory(bytes).ok()?;
+    let img = if img.width() > edge || img.height() > edge { img.resize(edge, edge, FilterType::Triangle) } else { img };
+    Some(pixels(&img.to_rgba8()))
+}
+
 pub fn dot_tile(step: u32) -> Image {
     let mut buf = Pixels::new(step, step);
     let px = buf.make_mut_slice();

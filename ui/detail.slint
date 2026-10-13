@@ -1,7 +1,8 @@
 import { Theme } from "theme.slint";
 import { Button, Icon, Icons, Scroll, Sheet, SheetTitle, Spinner } from "components.slint";
-import { ModDetail, ModImage, ModLink } from "types.slint";
+import { BodyBlock, ModDetail, ModImage, ModLink } from "types.slint";
 import { Thumb } from "rows.slint";
+import { Lightbox } from "lightbox.slint";
 
 component Stat inherits VerticalLayout {
     in property <string> label;
@@ -66,188 +67,340 @@ component LinkChip inherits Rectangle {
     }
 }
 
-export component ModDetailSheet inherits Sheet {
+component Gallery inherits Rectangle {
+    in property <[ModImage]> images;
+    callback open(image, string);
+
+    property <length> tile-width: 200px;
+    property <length> gap: 8px;
+
+    height: 120px;
+    clip: true;
+
+    function nudge(delta: length) {
+        flick.content-x = clamp(flick.content-x + delta, min(0px, flick.width - flick.content-width), 0px);
+    }
+
+    flick := Flickable {
+        y: 0;
+        height: 112px;
+        content-width: row.preferred-width;
+
+        row := HorizontalLayout {
+            for image in root.images: Rectangle {
+                width: image.failed ? 0px : root.tile-width + root.gap;
+                height: 112px;
+
+                Rectangle {
+                    x: 0;
+                    width: root.tile-width;
+                    border-radius: 10px;
+                    background: Theme.well;
+                    border-width: 1px;
+                    border-color: tile.has-hover && image.has-image ? Theme.focus : Theme.hair;
+                    clip: true;
+                    animate border-color { duration: Theme.quick; }
+
+                    if !image.has-image: Spinner { size: 18px; }
+
+                    if image.has-image: Image {
+                        width: parent.width;
+                        height: parent.height;
+                        source: image.image;
+                        image-fit: cover;
+                    }
+                }
+
+                tile := TouchArea {
+                    width: root.tile-width;
+                    enabled: image.has-image;
+                    mouse-cursor: image.has-image ? MouseCursor.pointer : MouseCursor.default;
+                    clicked => { root.open(image.image, image.title); }
+                    scroll-event(e) => {
+                        root.nudge(e.delta-x + e.delta-y);
+                        return accept;
+                    }
+                }
+            }
+        }
+    }
+
+    if flick.content-width > root.width: Rectangle {
+        property <float> part: root.width / flick.content-width;
+        x: -flick.content-x * part;
+        y: 114px;
+        width: root.width * part;
+        height: 3px;
+        border-radius: 1.5px;
+        background: Theme.grey;
+        opacity: 0.4;
+    }
+}
+
+component BodyBlockView inherits Rectangle {
+    in property <BodyBlock> block;
+    callback link(string);
+    callback zoom(image, string);
+
+    property <length> max-image-height: 360px;
+    property <length> natural-width: max(1px, root.block.image.width * 1px);
+    property <length> natural-height: max(1px, root.block.image.height * 1px);
+    property <float> fit: min(1.0, min(root.width / root.natural-width, root.max-image-height / root.natural-height));
+    property <bool> showing-alt: root.block.is-image && root.block.state == 2 && root.block.alt != "";
+
+    height: !root.block.is-image ? prose.preferred-height
+        : root.block.state == 1 ? root.natural-height * root.fit
+        : root.block.state == 0 ? 56px
+        : root.showing-alt ? 20px : 0px;
+
+    prose := StyledText {
+        visible: !root.block.is-image;
+        width: parent.width;
+        text: root.block.text;
+        default-font-size: 12.5px;
+        default-color: Theme.ink-2;
+        link-color: Theme.accent;
+        link-clicked(url) => { root.link(url); }
+    }
+
+    if root.block.is-image && root.block.state == 0: Spinner { size: 18px; }
+
+    if root.block.is-image && root.block.state == 1: Rectangle {
+        width: root.natural-width * root.fit;
+        height: root.natural-height * root.fit;
+        border-radius: 6px;
+        clip: true;
+
+        Image {
+            width: parent.width;
+            height: parent.height;
+            source: root.block.image;
+            image-fit: contain;
+        }
+
+        TouchArea {
+            mouse-cursor: MouseCursor.pointer;
+            clicked => {
+                if (root.block.link != "") {
+                    root.link(root.block.link);
+                } else {
+                    root.zoom(root.block.image, root.block.alt);
+                }
+            }
+        }
+    }
+
+    if root.showing-alt: Text {
+        x: (parent.width - self.width) / 2;
+        text: root.block.alt;
+        font-size: 12.5px;
+        color: root.block.link != "" ? Theme.accent : Theme.grey;
+        vertical-alignment: center;
+
+        TouchArea {
+            enabled: root.block.link != "";
+            mouse-cursor: MouseCursor.pointer;
+            clicked => { root.link(root.block.link); }
+        }
+    }
+}
+
+export component ModDetailSheet inherits Rectangle {
     in property <ModDetail> item;
     in property <[ModLink]> links;
     in property <[ModImage]> gallery;
+    in property <[BodyBlock]> body;
     callback command(string);
     callback install(string);
+    callback close();
 
-    card-width: 620px;
-
-    SheetTitle {
-        text: root.item.project-type == "" ? "Project" : root.item.project-type;
-        badge: root.item.license;
-        live: !root.item.loading;
+    function show(image: image, title: string) {
+        root.zoomed-image = image;
+        root.zoomed-caption = title;
+        root.zoomed = true;
     }
 
-    if root.item.loading: VerticalLayout {
-        spacing: 12px;
-        padding-top: 24px;
-        padding-bottom: 24px;
-        alignment: center;
+    property <image> zoomed-image;
+    property <string> zoomed-caption;
+    property <bool> zoomed;
 
-        HorizontalLayout {
+    sheet := Sheet {
+        card-width: 620px;
+        close => { root.close(); }
+
+        SheetTitle {
+            text: root.item.project-type == "" ? "Project" : root.item.project-type;
+            badge: root.item.license;
+            live: !root.item.loading;
+        }
+
+        if root.item.loading: VerticalLayout {
+            spacing: 12px;
+            padding-top: 24px;
+            padding-bottom: 24px;
             alignment: center;
-            Spinner { size: 26px; }
-        }
-
-        Text {
-            text: "Loading project…";
-            color: Theme.grey;
-            horizontal-alignment: center;
-        }
-    }
-
-    if !root.item.loading: VerticalLayout {
-        spacing: 14px;
-
-        HorizontalLayout {
-            spacing: 14px;
-
-            VerticalLayout {
-                alignment: start;
-                Thumb {
-                    source: root.item.icon;
-                    has-image: root.item.has-icon;
-                    letter: root.item.letter;
-                }
-            }
-
-            VerticalLayout {
-                alignment: center;
-                horizontal-stretch: 1;
-                spacing: 2px;
-
-                Text {
-                    text: root.item.title;
-                    font-size: 19px;
-                    font-weight: 600;
-                    color: Theme.ink;
-                    overflow: elide;
-                }
-
-                Text {
-                    text: (root.item.author != "" ? "by " + root.item.author + "  ·  " : "") + root.item.downloads + " downloads" + (root.item.followers != "0" && root.item.followers != "" ? "  ·  " + root.item.followers + " followers" : "");
-                    font-size: 12px;
-                    color: Theme.grey;
-                    overflow: elide;
-                }
-
-            }
-
-            VerticalLayout {
-                alignment: start;
-                if root.item.state == 0: Button {
-                    text: "Install";
-                    kind: "primary";
-                    icon: Icons.download;
-                    clicked => { root.install(root.item.id); }
-                }
-                if root.item.state == 1: Spinner { }
-                if root.item.state == 2: HorizontalLayout {
-                    spacing: 6px;
-                    VerticalLayout {
-                        alignment: center;
-                        Icon {
-                            width: 13px;
-                            height: 13px;
-                            commands: Icons.check;
-                            tint: Theme.accent;
-                        }
-                    }
-                    Text {
-                        text: "Installed";
-                        font-size: 12px;
-                        color: Theme.grey;
-                        vertical-alignment: center;
-                    }
-                }
-            }
-        }
-
-        if root.item.categories != "" || root.item.client-side != "" || root.item.updated != "": Rectangle {
-            border-radius: 10px;
-            background: Theme.well;
-            clip: true;
 
             HorizontalLayout {
-                padding-left: 14px;
-                padding-right: 14px;
-                padding-top: 11px;
-                padding-bottom: 11px;
-                spacing: 26px;
+                alignment: center;
+                Spinner { size: 26px; }
+            }
 
-                if root.item.categories != "": Stat {
-                    label: "Categories";
-                    value: root.item.categories;
-                }
-                if root.item.client-side != "": Stat {
-                    label: "Client";
-                    value: root.item.client-side;
-                }
-                if root.item.server-side != "": Stat {
-                    label: "Server";
-                    value: root.item.server-side;
-                }
-                if root.item.updated != "": Stat {
-                    label: "Updated";
-                    value: root.item.updated;
-                }
+            Text {
+                text: "Loading project…";
+                color: Theme.grey;
+                horizontal-alignment: center;
             }
         }
 
-        if root.gallery.length > 0: HorizontalLayout {
-            height: 112px;
-            spacing: 8px;
-            for image[i] in root.gallery: Rectangle {
-                visible: image.has-image;
-                width: image.has-image ? 150px : 0;
-                height: image.has-image ? 100px : 0;
+        if !root.item.loading: VerticalLayout {
+            spacing: 14px;
+
+            HorizontalLayout {
+                spacing: 14px;
+
+                VerticalLayout {
+                    alignment: start;
+                    Thumb {
+                        source: root.item.icon;
+                        has-image: root.item.has-icon;
+                        letter: root.item.letter;
+                    }
+                }
+
+                VerticalLayout {
+                    alignment: center;
+                    horizontal-stretch: 1;
+                    spacing: 2px;
+
+                    Text {
+                        text: root.item.title;
+                        font-size: 19px;
+                        font-weight: 600;
+                        color: Theme.ink;
+                        overflow: elide;
+                    }
+
+                    Text {
+                        text: (root.item.author != "" ? "by " + root.item.author + "  ·  " : "") + root.item.downloads + " downloads" + (root.item.followers != "0" && root.item.followers != "" ? "  ·  " + root.item.followers + " followers" : "");
+                        font-size: 12px;
+                        color: Theme.grey;
+                        overflow: elide;
+                    }
+
+                }
+
+                VerticalLayout {
+                    alignment: start;
+                    if root.item.state == 0: Button {
+                        text: "Install";
+                        kind: "primary";
+                        icon: Icons.download;
+                        clicked => { root.install(root.item.id); }
+                    }
+                    if root.item.state == 1: Spinner { }
+                    if root.item.state == 2: HorizontalLayout {
+                        spacing: 6px;
+                        VerticalLayout {
+                            alignment: center;
+                            Icon {
+                                width: 13px;
+                                height: 13px;
+                                commands: Icons.check;
+                                tint: Theme.accent;
+                            }
+                        }
+                        Text {
+                            text: "Installed";
+                            font-size: 12px;
+                            color: Theme.grey;
+                            vertical-alignment: center;
+                        }
+                    }
+                }
+            }
+
+            if root.item.categories != "" || root.item.client-side != "" || root.item.updated != "": Rectangle {
                 border-radius: 10px;
                 background: Theme.well;
                 clip: true;
-                Image {
-                    width: parent.width;
-                    height: parent.height;
-                    source: image.image;
-                    image-fit: cover;
+
+                HorizontalLayout {
+                    padding-left: 14px;
+                    padding-right: 14px;
+                    padding-top: 11px;
+                    padding-bottom: 11px;
+                    spacing: 26px;
+
+                    if root.item.categories != "": Stat {
+                        label: "Categories";
+                        value: root.item.categories;
+                    }
+                    if root.item.client-side != "": Stat {
+                        label: "Client";
+                        value: root.item.client-side;
+                    }
+                    if root.item.server-side != "": Stat {
+                        label: "Server";
+                        value: root.item.server-side;
+                    }
+                    if root.item.updated != "": Stat {
+                        label: "Updated";
+                        value: root.item.updated;
+                    }
+                }
+            }
+
+            if root.gallery.length > 0: Gallery {
+                images: root.gallery;
+                open(image, title) => { root.show(image, title); }
+            }
+
+            if root.links.length > 0: HorizontalLayout {
+                spacing: 8px;
+
+                for link in root.links: LinkChip {
+                    label: link.label;
+                    url: link.url;
+                    open => { root.command("open-link:" + link.url); }
+                }
+            }
+
+            if root.body.length > 0: Rectangle {
+                property <length> content-height: prose.preferred-height + 32px;
+
+                height: min(self.content-height, max(180px, root.height - 480px));
+                border-radius: 12px;
+                background: Theme.well;
+                border-width: 1px;
+                border-color: Theme.hair;
+                clip: true;
+
+                Scroll {
+                    content-height: parent.content-height;
+
+                    prose := VerticalLayout {
+                        x: 16px;
+                        y: 16px;
+                        width: parent.width - 32px;
+                        spacing: 10px;
+
+                        for block in root.body: BodyBlockView {
+                            block: block;
+                            link(url) => { root.command("open-link:" + url); }
+                            zoom(image, title) => { root.show(image, title); }
+                        }
+                    }
                 }
             }
         }
+    }
 
-        if root.links.length > 0: HorizontalLayout {
-            spacing: 8px;
-
-            for link in root.links: LinkChip {
-                label: link.label;
-                url: link.url;
-                open => { root.command("open-link:" + link.url); }
-            }
-        }
-
-        if root.item.body != "": Rectangle {
-            height: 300px;
-            border-radius: 12px;
-            background: Theme.well;
-            border-width: 1px;
-            border-color: Theme.hair;
-            clip: true;
-
-            Scroll {
-                content-height: body.preferred-height + 28px;
-
-                body := StyledText {
-                    x: 16px;
-                    y: 14px;
-                    width: parent.width - 32px;
-                    text: @markdown("\{root.item.body}");
-                    default-font-size: 12.5px;
-                    default-color: Theme.ink-2;
-                    link-color: Theme.accent;
-                    link-clicked(link) => { root.command("open-link:" + link); }
-                }
-            }
+    if root.zoomed: Lightbox {
+        source: root.zoomed-image;
+        caption: root.zoomed-caption;
+        close => {
+            root.zoomed = false;
+            sheet.focus-keys();
         }
     }
 }

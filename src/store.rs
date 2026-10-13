@@ -80,6 +80,7 @@ pub struct Profile {
     pub created: u64,
     pub last_played: u64,
     pub played: u64,
+    pub include_snapshots: bool,
 }
 
 impl Default for Profile {
@@ -101,6 +102,7 @@ impl Default for Profile {
             created: 0,
             last_played: 0,
             played: 0,
+            include_snapshots: false,
         }
     }
 }

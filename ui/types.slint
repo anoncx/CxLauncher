@@ -59,7 +59,24 @@ export struct ModLink {
 export struct ModImage {
     image: image,
     has-image: bool,
+    failed: bool,
     title: string,
+}
+
+export struct BodyBlock {
+    is-image: bool,
+    text: styled-text,
+    alt: string,
+    link: string,
+    image: image,
+    state: int,
+}
+
+export struct VersionItem {
+    id: string,
+    title: string,
+    detail: string,
+    tag: string,
 }
 
 export struct VersionPick {
@@ -73,7 +90,6 @@ export struct ModDetail {
     title: string,
     author: string,
     description: string,
-    body: string,
     downloads: string,
     followers: string,
     license: string,
@@ -114,6 +130,7 @@ export struct ProfileEdit {
     pack: string,
     java: string,
     servers: [Command],
+    include-snapshots: bool,
 }
 
 export struct WorldItem {
