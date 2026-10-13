@@ -147,6 +147,15 @@ export component SettingsPage inherits Rectangle {
                     }
 
                     Row {
+                        title: "Discrete GPU";
+                        detail: "Run the game on the dedicated GPU (PRIME offload).";
+                        Toggle {
+                            checked: root.data.discrete-gpu;
+                            toggled(on) => { root.setting("discrete-gpu", on ? "1" : "0"); }
+                        }
+                    }
+
+                    Row {
                         title: "Garbage collector";
                         detail: root.data.collector == 0 ? "G1, tuned like the official launcher. Best for most PCs." : "ZGC, almost no stutter. Needs 4 GB or more.";
                         Segmented {
