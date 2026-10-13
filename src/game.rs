@@ -30,6 +30,49 @@ pub struct Options {
     pub server: String,
 }
 
+/// Prism Launcher `UseDiscreteGpu` env block: DRI_PRIME for open drivers,
+/// PRIME render offload for proprietary Nvidia. Harmless when absent.
+/// The game inherits these from our own env at spawn, so the caller sets
+/// them just around `Game::spawn` via [`DiscreteGpuGuard`].
+pub fn discrete_gpu_envs() -> [(&'static str, &'static str); 4] {
+    [
+        ("DRI_PRIME", "1"),
+        ("__NV_PRIME_RENDER_OFFLOAD", "1"),
+        ("__VK_LAYER_NV_optimus", "NVIDIA_only"),
+        ("__GLX_VENDOR_LIBRARY_NAME", "nvidia"),
+    ]
+}
+
+/// Sets the discrete-GPU envs on this process (inherited by the game
+/// at spawn) and restores the previous values on drop.
+pub struct DiscreteGpuGuard {
+    saved: Vec<(&'static str, Option<std::ffi::OsString>)>,
+}
+
+impl DiscreteGpuGuard {
+    pub fn apply(enabled: bool) -> Self {
+        let mut saved = Vec::new();
+        if enabled {
+            for (k, v) in discrete_gpu_envs() {
+                saved.push((k, std::env::var_os(k)));
+                std::env::set_var(k, v);
+            }
+        }
+        Self { saved }
+    }
+}
+
+impl Drop for DiscreteGpuGuard {
+    fn drop(&mut self) {
+        for (k, old) in self.saved.drain(..) {
+            match old {
+                Some(v) => std::env::set_var(k, v),
+                None => std::env::remove_var(k),
+            }
+        }
+    }
+}
+
 pub fn split_args(text: &str) -> Vec<String> {
     let mut out = Vec::new();
     let mut cur = String::new();

@@ -160,6 +160,7 @@ impl App {
                 prepared.client.as_ref().map(|c| format!("{} {}", c.name, c.version)).unwrap_or_else(|| "Fabric".into())
             ),
         );
+        let _discrete_gpu = game::DiscreteGpuGuard::apply(self.settings.discrete_gpu);
         match Game::spawn(&prepared.java, &args, &prepared.game_dir) {
             Ok(game) => {
                 if let Some(p) = self.profiles.get_mut(&profile.id) {
