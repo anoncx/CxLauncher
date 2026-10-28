@@ -2,6 +2,7 @@ pub mod args;
 pub mod assets;
 pub mod fabric;
 pub mod forge;
+pub mod importer;
 pub mod java;
 pub mod libraries;
 pub mod loader;

@@ -164,6 +164,15 @@ export component ProfilesPage inherits Rectangle {
             VerticalLayout {
                 alignment: center;
                 Button {
+                    text: "Other launchers";
+                    icon: Icons.folder;
+                    clicked => { root.command("import-open"); }
+                }
+            }
+
+            VerticalLayout {
+                alignment: center;
+                Button {
                     text: "Import";
                     icon: Icons.download;
                     clicked => { root.command("import-pack"); }

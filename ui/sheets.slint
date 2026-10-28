@@ -1,7 +1,7 @@
 import { Theme } from "theme.slint";
-import { Button, Icon, Icons, Input, Segmented, Select, Sheet, SheetTitle, Spinner, Toggle } from "components.slint";
+import { Button, Icon, Icons, Input, Scroll, Segmented, Select, Sheet, SheetTitle, Spinner, Toggle } from "components.slint";
 import { VersionSelect } from "versions.slint";
-import { Command, ProfileEdit, ShotItem, VersionItem, WorldItem } from "types.slint";
+import { Command, ImportItem, ProfileEdit, ShotItem, VersionItem, WorldItem } from "types.slint";
 
 component Step inherits HorizontalLayout {
     in property <int> n;
@@ -671,6 +671,120 @@ export component ProfileSheet inherits Sheet {
                     include-snapshots: root.include-snapshots,
                 });
             }
+        }
+    }
+}
+
+export component ImportSheet inherits Sheet {
+    in property <[ImportItem]> items;
+    in property <bool> busy;
+    in property <int> picked;
+    callback command(string);
+
+    card-width: 520px;
+
+    SheetTitle {
+        text: "Switch to CxLauncher";
+        badge: "IMPORT";
+        live: root.busy;
+    }
+
+    Text {
+        text: "We found Minecraft instances from other launchers. Choose what to bring over. Your originals are copied, never changed.";
+        color: Theme.ink-2;
+        wrap: word-wrap;
+    }
+
+    Scroll {
+        height: min(root.items.length * 58px + 2px, 320px);
+        content-height: root.items.length * 58px;
+
+        for item[i] in root.items: Rectangle {
+            y: i * 58px;
+            width: parent.width - 10px;
+            height: 52px;
+            border-radius: 12px;
+            background: Theme.well;
+            border-width: 1px;
+            border-color: item.picked ? Theme.accent : Theme.hair;
+            animate border-color { duration: Theme.quick; }
+
+            TouchArea {
+                enabled: !root.busy;
+                mouse-cursor: MouseCursor.pointer;
+                clicked => { root.command("import-toggle:" + i); }
+            }
+
+            HorizontalLayout {
+                padding-left: 14px;
+                padding-right: 14px;
+                spacing: 12px;
+
+                VerticalLayout {
+                    alignment: center;
+                    horizontal-stretch: 1;
+                    spacing: 2px;
+
+                    Text {
+                        text: item.name;
+                        font-weight: 500;
+                        color: Theme.ink;
+                        overflow: elide;
+                    }
+
+                    Text {
+                        text: item.detail;
+                        font-size: 11.5px;
+                        color: Theme.grey;
+                        overflow: elide;
+                    }
+                }
+
+                VerticalLayout {
+                    alignment: center;
+                    Rectangle {
+                        width: 20px;
+                        height: 20px;
+                        border-radius: 6px;
+                        background: item.picked ? Theme.accent : Theme.surface-2;
+                        animate background { duration: Theme.quick; }
+
+                        Icon {
+                            width: 12px;
+                            height: 12px;
+                            commands: Icons.check;
+                            tint: Theme.on-accent;
+                            visible: item.picked;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    HorizontalLayout {
+        spacing: 8px;
+
+        Button {
+            text: root.picked == root.items.length ? "Select none" : "Select all";
+            enabled: !root.busy;
+            clicked => { root.command(root.picked == root.items.length ? "import-none" : "import-all"); }
+        }
+
+        Rectangle { horizontal-stretch: 1; }
+
+        Button {
+            text: "Not now";
+            enabled: !root.busy;
+            clicked => { root.close(); }
+        }
+
+        Button {
+            text: root.busy ? "Importing…" : "Import " + root.picked;
+            kind: "primary";
+            icon: Icons.download;
+            enabled: root.picked > 0 && !root.busy;
+            clicked => { root.command("import-run"); }
         }
     }
 }

@@ -11,11 +11,11 @@ import { ModsPage } from "mods.slint";
 import { ProfilesPage } from "profiles.slint";
 import { ConsolePage } from "console.slint";
 import { SettingsPage } from "settings.slint";
-import { ProfileSheet, SigninSheet } from "sheets.slint";
+import { ImportSheet, ProfileSheet, SigninSheet } from "sheets.slint";
 import { ModDetailSheet } from "detail.slint";
-import { AccountItem, BodyBlock, Command, FindItem, JavaItem, LogLine, ModImage, ModItem, ModDetail, ModLink, NavItem, ProfileEdit, ProfileItem, SettingsView, ShotItem, VersionItem, WorldItem } from "types.slint";
+import { AccountItem, BodyBlock, Command, FindItem, ImportItem, JavaItem, LogLine, ModImage, ModItem, ModDetail, ModLink, NavItem, ProfileEdit, ProfileItem, SettingsView, ShotItem, VersionItem, WorldItem } from "types.slint";
 
-export { Theme, AccountItem, BodyBlock, Command, FindItem, JavaItem, LogLine, ModImage, ModItem, ModDetail, ModLink, NavItem, ProfileEdit, ProfileItem, SettingsView, ShotItem, VersionItem, WorldItem }
+export { Theme, AccountItem, BodyBlock, Command, FindItem, ImportItem, JavaItem, LogLine, ModImage, ModItem, ModDetail, ModLink, NavItem, ProfileEdit, ProfileItem, SettingsView, ShotItem, VersionItem, WorldItem }
 
 component Page inherits Rectangle {
     property <float> shown: 0;
@@ -107,6 +107,11 @@ export component AppWindow inherits Window {
     in property <string> signin-code;
     in property <string> signin-link;
     in property <string> signin-error;
+
+    in property <bool> import-open;
+    in property <[ImportItem]> imports;
+    in property <bool> import-busy;
+    in property <int> import-picked;
 
     in-out property <bool> profile-open;
     in property <ProfileEdit> profile-edit;
@@ -453,6 +458,14 @@ export component AppWindow inherits Window {
         save(p) => { root.profile-save(p); }
         command(id) => { root.command(id); }
         close => { root.profile-open = false; }
+    }
+
+    if root.import-open: ImportSheet {
+        items: root.imports;
+        busy: root.import-busy;
+        picked: root.import-picked;
+        command(id) => { root.command(id); }
+        close => { root.command("import-close"); }
     }
 
     if root.detail-open: ModDetailSheet {

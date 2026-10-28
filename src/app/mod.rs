@@ -2,6 +2,7 @@ mod accounts;
 mod console;
 mod finder;
 mod images;
+mod import;
 mod instance;
 mod markdown;
 mod mods;
@@ -45,6 +46,7 @@ struct Models {
     shots: Rc<VecModel<crate::ShotItem>>,
     categories: Rc<VecModel<crate::Command>>,
     sorts: Rc<VecModel<crate::Command>>,
+    imports: Rc<VecModel<crate::ImportItem>>,
 }
 
 pub struct App {
@@ -64,6 +66,7 @@ pub struct App {
     javas: Vec<crate::mc::java::Installed>,
     info: play::Info,
     version_filter: profiles::VersionFilter,
+    import: import::Import,
     ticker: slint::Timer,
     timers: Vec<slint::Timer>,
 }
@@ -161,6 +164,12 @@ impl App {
             "edit-profile" => self.edit_profile(Some(arg)),
             "play-profile" => self.play_profile(arg),
             "import-pack" => self.import_pack(),
+            "import-open" => self.import_open(),
+            "import-toggle" => self.import_toggle(arg),
+            "import-all" => self.import_set_all(true),
+            "import-none" => self.import_set_all(false),
+            "import-run" => self.import_run(),
+            "import-close" => self.import_close(),
             "use-fabric" => self.use_fabric(),
             "delete-profile" => self.delete_profile(arg),
             "boost" => self.boost(),
@@ -219,6 +228,7 @@ impl App {
         self.poll_online();
         self.push_play();
         self.push_log();
+        self.import_check();
         let weak = self.ui.clone();
         let timer = slint::Timer::default();
         timer.start(slint::TimerMode::Repeated, Duration::from_secs(90), move || {
@@ -270,6 +280,7 @@ pub fn run() -> Result<(), slint::PlatformError> {
     ui.set_sorts(ModelRc::from(models.sorts.clone()));
     ui.set_worlds(ModelRc::from(models.worlds.clone()));
     ui.set_shots(ModelRc::from(models.shots.clone()));
+    ui.set_imports(ModelRc::from(models.imports.clone()));
     ui.set_tile(images::dot_tile(16));
     ui.global::<Theme>().set_mode(settings.theme);
     ui.global::<Theme>().set_accent_index(settings.accent.clamp(0, 6));
@@ -293,6 +304,7 @@ pub fn run() -> Result<(), slint::PlatformError> {
         javas: Vec::new(),
         info: play::Info { online: -1, ..Default::default() },
         version_filter: Default::default(),
+        import: Default::default(),
         ticker: slint::Timer::default(),
         timers: Vec::new(),
     }));

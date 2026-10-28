@@ -49,13 +49,18 @@ Play page. Each profile picks:
 
 - **Minecraft**: Automatic (the CxVisuals version when CxVisuals is on, otherwise the latest release) or any release
 - **Loader**: Fabric or Vanilla. Old versions work too: legacy natives and the old asset layouts are handled
-- **CxVisuals**: on or off. It only loads on the Minecraft version it is made for; the editor says so when the
-  version does not fit
+- **CxVisuals**: on or off. Builds exist for several Minecraft versions (26.3 and 26.2 today) and the launcher
+  downloads the one that matches the profile; the editor says so when no build fits the version
 - a server to join on launch and an optional pinned Fabric Loader version
 
 **Modpacks** on the Profiles page searches Modrinth for Fabric modpacks; **Get** downloads one into a new profile with
 its Minecraft version, Fabric Loader version, mods and config. **Import** does the same for a `.mrpack` file. Forge,
 NeoForge and Quilt packs are recognised and politely declined.
+
+**Import from other launchers** finds instances of the official launcher, Prism, CurseForge and Modrinth, shows what
+each contains (Minecraft version, loader, mods, worlds) and copies the ones you tick into new profiles. The originals
+are never touched, and an instance you already imported is not offered again. The launcher offers this once on first
+start; the button on the Profiles page runs it again.
 
 ## Mods
 

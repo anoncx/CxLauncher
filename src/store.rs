@@ -19,6 +19,7 @@ pub struct Settings {
     pub fullscreen: bool,
     pub discrete_gpu: bool,
     pub after_launch: i32,
+    pub import_prompted: bool,
     pub threads: u32,
     pub local_client: String,
     pub profile: String,
@@ -42,6 +43,7 @@ impl Default for Settings {
             fullscreen: false,
             discrete_gpu: false,
             after_launch: 1,
+            import_prompted: false,
             threads: machine.download_threads() as u32,
             local_client: String::new(),
             profile: String::new(),
@@ -85,6 +87,7 @@ pub struct Profile {
     pub last_played: u64,
     pub played: u64,
     pub include_snapshots: bool,
+    pub source: String,
 }
 
 impl Default for Profile {
@@ -108,6 +111,7 @@ impl Default for Profile {
             last_played: 0,
             played: 0,
             include_snapshots: false,
+            source: String::new(),
         }
     }
 }
