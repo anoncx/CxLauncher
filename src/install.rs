@@ -146,7 +146,7 @@ pub fn prepare(req: &Request, progress: &Progress, stage: &dyn Fn(Stage)) -> Res
     let client = match (profile.uses_client(), &req.local_client) {
         (false, _) => None,
         (true, Some(jar)) => Some(client::from_jar(jar.clone())?),
-        (true, None) => Some(client::from_cloud(http, ep, paths)?),
+        (true, None) => Some(client::from_cloud(http, ep, paths, Some(profile.game.trim()).filter(|g| !g.is_empty()).unwrap_or(client::GAME))?),
     };
     let manifest = meta::manifest(http, ep, paths).ok();
     let latest = manifest.as_ref().map(|m| m.latest.release.clone()).unwrap_or_default();

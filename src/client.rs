@@ -6,7 +6,7 @@ use crate::paths::Paths;
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 
-pub const GAME: &str = "26.2";
+pub const GAME: &str = "26.3";
 pub const NAME: &str = "CxVisuals";
 
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]
@@ -53,12 +53,19 @@ fn valid_file(name: &str) -> bool {
     !name.is_empty() && name.ends_with(".jar") && !name.starts_with('.') && !name.contains(['/', '\\'])
 }
 
-pub fn manifest(http: &Http, ep: &Endpoints, paths: &Paths) -> Result<Manifest, String> {
-    cached_json(http, &ep.client, &paths.meta().join("client.json"))
+fn valid_game(game: &str) -> bool {
+    !game.is_empty() && game.chars().all(|c| c.is_ascii_alphanumeric() || matches!(c, '.' | '-' | '_'))
 }
 
-pub fn from_cloud(http: &Http, ep: &Endpoints, paths: &Paths) -> Result<Client, String> {
-    let m = manifest(http, ep, paths).map_err(|e| format!("cannot reach the {NAME} cloud: {e}"))?;
+pub fn manifest(http: &Http, ep: &Endpoints, paths: &Paths, game: &str) -> Result<Manifest, String> {
+    if !valid_game(game) {
+        return Err(format!("{game} is not a Minecraft version"));
+    }
+    cached_json(http, &format!("{}?mc={game}", ep.client), &paths.meta().join(format!("client-{game}.json")))
+}
+
+pub fn from_cloud(http: &Http, ep: &Endpoints, paths: &Paths, game: &str) -> Result<Client, String> {
+    let m = manifest(http, ep, paths, game).map_err(|e| format!("cannot get {NAME} for Minecraft {game}: {e}"))?;
     if !valid_file(&m.file) {
         return Err(format!("the {NAME} cloud sent a bad file name"));
     }
@@ -99,6 +106,12 @@ pub fn from_jar(jar: PathBuf) -> Result<Client, String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn game_versions_are_checked_before_they_reach_a_path_or_url() {
+        assert!(valid_game("26.3") && valid_game("1.21.11") && valid_game("26.4-snapshot-1"));
+        assert!(!valid_game("") && !valid_game("../x") && !valid_game("26.3?x=1") && !valid_game("a/b"));
+    }
 
     #[test]
     fn checks_file_names() {

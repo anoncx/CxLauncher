@@ -326,9 +326,10 @@ impl App {
     pub fn load_client_info(&mut self) {
         let core = self.core.clone();
         let local = self.settings.local_client.clone();
+        let wanted = Some(self.profile().game.trim().to_string()).filter(|g| !g.is_empty()).unwrap_or_else(|| client::GAME.to_string());
         background(move || {
             let found = if local.is_empty() {
-                client::manifest(&core.http, &core.ep, &core.paths).map(|m| (m.name, m.version, m.minecraft, m.loader, m.notes))
+                client::manifest(&core.http, &core.ep, &core.paths, &wanted).map(|m| (m.name, m.version, m.minecraft, m.loader, m.notes))
             } else {
                 client::from_jar(PathBuf::from(&local)).map(|c| (c.name, c.version, c.minecraft, c.loader, vec!["Local build".to_string()]))
             };

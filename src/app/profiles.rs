@@ -137,6 +137,7 @@ impl App {
         self.models.results.set_vec(Vec::new());
         self.push_profiles();
         self.push_play();
+        self.load_client_info();
         if self.page() == 2 {
             self.refresh_mods();
         }
@@ -213,6 +214,7 @@ impl App {
             self.switch_profile(&id);
         } else {
             self.push_play();
+            self.load_client_info();
         }
     }
 

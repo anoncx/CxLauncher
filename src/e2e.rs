@@ -270,7 +270,7 @@ mod launch {
 
         let visuals = jar(work, "cxvisuals.jar", &[("fabric.mod.json", br#"{"id": "cxvisuals", "version": "0.1.0+26.2", "depends": {"minecraft": "~26.2"}}"#)]);
         m.put(
-            "/client",
+            "/client?mc=26.2",
             json!({"version": "0.1.0+26.2", "minecraft": "26.2", "loader": "0.19.0", "file": "cxvisuals-0.1.0+26.2.jar", "sha1": sha1(&visuals), "size": visuals.len(), "notes": ["First release"]}).to_string(),
         );
         m.put("/client/cxvisuals-0.1.0+26.2.jar", visuals);
@@ -299,7 +299,7 @@ mod launch {
         let paths = Paths::new(work.join("home"));
         let ep = Endpoints::local(&mock.base);
         let http = Http::direct();
-        let profile = Profile { id: "cxvisuals".into(), name: "CxVisuals".into(), ..Default::default() };
+        let profile = Profile { id: "cxvisuals".into(), name: "CxVisuals".into(), game: "26.2".into(), ..Default::default() };
         let stages = Mutex::new(Vec::new());
         let progress = Progress::default();
         let request = Request { http: &http, ep: &ep, paths: &paths, profile: &profile, local_client: None, java: None, threads: 6, verify: false };
