@@ -30,6 +30,8 @@ pub struct Finder {
     pub detail_kind: Option<Kind>,
     pub category: String,
     pub sort: modrinth::Sort,
+    total: u64,
+    busy: bool,
 }
 
 fn commas(n: u64) -> String {
@@ -180,11 +182,26 @@ impl App {
     }
 
     fn search(&mut self, kind: Kind) {
+        self.fetch(kind, 0);
+    }
+
+    pub fn more(&mut self, kind: Kind) {
+        let finder = self.finder_ref(kind);
+        let loaded = finder.hits.len();
+        if !finder.busy && loaded > 0 && (loaded as u64) < finder.total {
+            self.fetch(kind, loaded);
+        }
+    }
+
+    fn fetch(&mut self, kind: Kind, offset: usize) {
         let profile = self.profile();
         let game = (kind == Kind::Mod).then(|| self.game_of(&profile));
         let content_kind = if kind == Kind::Mod { self.mods.content.project_type().to_string() } else { "modpack".to_string() };
         let finder = self.finder(kind);
-        finder.generation += 1;
+        finder.busy = true;
+        if offset == 0 {
+            finder.generation += 1;
+        }
         let generation = finder.generation;
         let query = finder.query.clone();
         let filter = modrinth::Filter {
@@ -192,30 +209,39 @@ impl App {
             categories: if finder.category.is_empty() { Vec::new() } else { vec![finder.category.clone()] },
             loader: (kind == Kind::Mod).then(|| profile.loader().id().to_string()),
             sort: finder.sort,
+            offset,
         };
         let core = self.core.clone();
         self.searching(kind, true, None);
         background(move || {
             let result = modrinth::search_filtered(&core.http, &core.ep, &query, &content_kind, &filter);
-            later(move |app| app.show_results(kind, generation, query, game, result));
+            later(move |app| app.show_results(kind, generation, offset, query, game, result));
         });
     }
 
-    fn show_results(&mut self, kind: Kind, generation: u64, query: String, game: Option<String>, result: Result<modrinth::Search, String>) {
+    fn show_results(&mut self, kind: Kind, generation: u64, offset: usize, query: String, game: Option<String>, result: Result<modrinth::Search, String>) {
         if generation != self.finder(kind).generation {
             return;
         }
+        self.finder(kind).busy = false;
         let loader = self.profile().loader();
         let what = match &game {
             Some(g) => format!("{} mods for {g}", loader.label()),
             None => "modpacks".to_string(),
         };
-        let (hits, note) = match result {
-            Ok(s) if s.hits.is_empty() => (Vec::new(), format!("No {what} match “{query}”.")),
-            Ok(s) => (s.hits, String::new()),
+        let (mut hits, note) = match result {
+            Ok(s) if s.hits.is_empty() && offset == 0 => (Vec::new(), format!("No {what} match “{query}”.")),
+            Ok(s) => {
+                self.finder(kind).total = s.total_hits;
+                (s.hits, String::new())
+            }
             Err(e) => (Vec::new(), format!("Modrinth is not reachable right now ({e}).")),
         };
         self.searching(kind, false, Some(note));
+        if offset > 0 {
+            let known: HashSet<&str> = self.finder_ref(kind).hits.iter().map(|h| h.project_id.as_str()).collect();
+            hits.retain(|h| !known.contains(h.project_id.as_str()));
+        }
         let items: Vec<FindItem> = hits
             .iter()
             .map(|h| FindItem {
@@ -230,8 +256,14 @@ impl App {
                 state: 0,
             })
             .collect();
-        self.found_model(kind).set_vec(items);
-        self.finder(kind).hits = hits.clone();
+        if offset == 0 {
+            self.found_model(kind).set_vec(items);
+            self.finder(kind).hits = hits.clone();
+        } else {
+            let model = self.found_model(kind).clone();
+            items.into_iter().for_each(|item| model.push(item));
+            self.finder(kind).hits.extend(hits.iter().cloned());
+        }
         self.mark_results(kind);
         let core = self.core.clone();
         background(move || {

@@ -191,6 +191,7 @@ export component SearchPane inherits Rectangle {
     callback install(string);
     callback open(string);
     callback filter(string, string);
+    callback more();
 
     property <bool> filters: root.categories.length > 0;
 
@@ -240,6 +241,11 @@ export component SearchPane inherits Rectangle {
         y: 44px;
         height: parent.height - 44px;
         content-height: list.preferred-height + 4px;
+        moved => {
+            if (self.content-height + self.scroll-y - self.visible-height < 480px) {
+                root.more();
+            }
+        }
 
         list := FindList {
             width: parent.width;

@@ -981,15 +981,40 @@ export component Scroll inherits Rectangle {
         @children
     }
 
-    if root.content-height > root.height: Rectangle {
-        property <float> part: root.height / root.content-height;
-        x: root.width - 7px;
-        y: 4px + (-flick.content-y / (root.content-height - root.height)) * (root.height - 8px - self.height);
-        width: 4px;
-        height: max(28px, (root.height - 8px) * part);
-        border-radius: Theme.round(2px);
-        background: Theme.grey;
-        opacity: 0.3;
+    if root.content-height > root.height: track := TouchArea {
+        property <length> grab;
+        property <length> travel: root.height - 8px - thumb.height;
+        x: root.width - 12px;
+        width: 12px;
+        height: root.height;
+        mouse-cursor: MouseCursor.pointer;
+
+        function drag-to(y: length) {
+            root.scroll-y = -Math.clamp((y - 4px) / self.travel, 0, 1) * (root.content-height - root.height);
+        }
+
+        pointer-event(e) => {
+            if (e.button == PointerEventButton.left && e.kind == PointerEventKind.down) {
+                self.grab = self.mouse-y >= thumb.y && self.mouse-y <= thumb.y + thumb.height ? self.mouse-y - thumb.y : thumb.height / 2;
+                self.drag-to(self.mouse-y - self.grab);
+            }
+        }
+        moved => {
+            if (self.pressed) {
+                self.drag-to(self.mouse-y - self.grab);
+            }
+        }
+
+        thumb := Rectangle {
+            x: parent.width - (self.width + 3px);
+            y: 4px + (-flick.content-y / (root.content-height - root.height)) * (root.height - 8px - self.height);
+            width: track.pressed || track.has-hover ? 7px : 4px;
+            height: max(28px, (root.height - 8px) * root.height / root.content-height);
+            border-radius: Theme.pill(self.width);
+            background: Theme.grey;
+            opacity: track.pressed ? 0.7 : track.has-hover ? 0.5 : 0.3;
+            animate width, opacity { duration: Theme.quick; }
+        }
     }
 }
 

@@ -90,6 +90,8 @@ pub struct Hit {
 pub struct Search {
     #[serde(default)]
     pub hits: Vec<Hit>,
+    #[serde(default)]
+    pub total_hits: u64,
 }
 
 #[derive(Clone, Debug, Deserialize)]
@@ -192,6 +194,7 @@ pub struct Filter {
     pub categories: Vec<String>,
     pub loader: Option<String>,
     pub sort: Sort,
+    pub offset: usize,
 }
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
@@ -270,10 +273,11 @@ pub fn search_filtered(http: &Http, ep: &Endpoints, query: &str, kind: &str, fil
     }
     let sort = if query.trim().is_empty() && filter.sort == Sort::Relevance { Sort::Downloads } else { filter.sort };
     let url = format!(
-        "{}/search?query={}&facets={}&limit=24&index={}",
+        "{}/search?query={}&facets={}&limit=24&offset={}&index={}",
         base(ep),
         encode(query),
         encode(&format!("[{}]", facets.join(","))),
+        filter.offset,
         sort.index()
     );
     http.json(&url)
@@ -291,6 +295,15 @@ pub fn pack_versions(http: &Http, ep: &Endpoints, project: &str, loader: Option<
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn reads_search_totals_for_paging() {
+        let found: Search = serde_json::from_str(r#"{"hits": [{"project_id": "a", "title": "A"}], "offset": 24, "limit": 24, "total_hits": 4210}"#).unwrap();
+        assert_eq!(found.hits.len(), 1);
+        assert_eq!(found.total_hits, 4210);
+        let bare: Search = serde_json::from_str(r#"{"hits": []}"#).unwrap();
+        assert_eq!(bare.total_hits, 0);
+    }
 
     #[test]
     fn reads_versions() {

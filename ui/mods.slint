@@ -380,6 +380,7 @@ export component ModsPage inherits Rectangle {
                 category <=> root.category;
                 sort <=> root.sort;
                 filter(cat, order) => { root.category = cat; root.sort = order; root.command("filter-mods:" + cat + "|" + order); }
+                more => { root.command("more-mods"); }
                 categories: root.categories;
                 sorts: root.sorts;
             }

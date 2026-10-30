@@ -188,6 +188,8 @@ impl App {
                 let (cat, sort) = arg.split_once('|').unwrap_or((arg, ""));
                 self.set_filter(finder::Kind::Pack, cat, sort);
             }
+            "more-mods" => self.more(finder::Kind::Mod),
+            "more-packs" => self.more(finder::Kind::Pack),
             "content" => self.set_content(arg.parse().unwrap_or(0)),
             "update-mods" => self.update_mods(),
             "update-pack" => self.update_pack(arg),

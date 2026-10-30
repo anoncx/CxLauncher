@@ -225,6 +225,7 @@ export component ProfilesPage inherits Rectangle {
                 categories: root.categories;
                 sorts: root.sorts;
                 filter(cat, order) => { root.category = cat; root.sort = order; root.command("filter-packs:" + cat + "|" + order); }
+                more => { root.command("more-packs"); }
             }
         }
     }
