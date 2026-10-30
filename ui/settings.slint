@@ -126,6 +126,20 @@ export component SettingsPage inherits Rectangle {
                     }
                 }
 
+                GroupLabel { text: "Mods"; }
+
+                Group {
+                    Row {
+                        title: "Beta and alpha updates";
+                        detail: "Off keeps mod updates to full releases. Checking for updates sends your mod file hashes to Modrinth, nothing else.";
+                        divider: false;
+                        Toggle {
+                            checked: root.data.beta-updates;
+                            toggled(on) => { root.setting("beta-updates", on ? "1" : "0"); }
+                        }
+                    }
+                }
+
                 GroupLabel { text: "Game"; }
 
                 Group {

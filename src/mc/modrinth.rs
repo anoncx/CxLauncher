@@ -219,7 +219,7 @@ impl Sort {
     }
 }
 
-fn base(ep: &Endpoints) -> &str {
+pub(crate) fn base(ep: &Endpoints) -> &str {
     ep.modrinth.trim_end_matches('/')
 }
 

@@ -66,11 +66,11 @@ impl Content {
         }
     }
 
-    fn dir(self, core: &Core, profile: &str) -> PathBuf {
+    pub(super) fn dir(self, core: &Core, profile: &str) -> PathBuf {
         core.paths.profile(profile).join(self.dir_name())
     }
 
-    fn index_file(self, core: &Core, profile: &str) -> PathBuf {
+    pub(super) fn index_file(self, core: &Core, profile: &str) -> PathBuf {
         core.paths.profile(profile).join(format!("cxlauncher-{}.json", self.dir_name()))
     }
 }
@@ -96,6 +96,7 @@ pub struct Mods {
     ids: HashSet<String>,
     pub(crate) index: Index,
     boosting: bool,
+    pub(super) confirm: Option<String>,
 }
 
 struct Found {
@@ -149,7 +150,7 @@ fn scan(dir: &Path, ext: &str, known: &HashSet<String>) -> Vec<Found> {
         .collect()
 }
 
-fn bare_name(name: &str) -> bool {
+pub(super) fn bare_name(name: &str) -> bool {
     !name.is_empty() && name != "." && name != ".." && !name.contains(['/', '\\', ':'])
 }
 
@@ -405,7 +406,7 @@ impl App {
         self.refresh_mods();
     }
 
-    pub fn remove_mod(&mut self, file: &str) {
+    pub(super) fn remove_file(&mut self, file: &str) {
         let content = self.mods.content;
         let profile = self.profile().id;
         let path = content.dir(&self.core, &profile).join(file);
@@ -475,48 +476,6 @@ impl App {
                 Ok(_) => app.toast(format!("Installed {title}")),
                 Err(e) => app.toast(e),
             }
-        });
-    }
-
-    pub fn update_mods(&mut self) {
-        if self.mods.content != Content::Mod {
-            self.toast("Updates currently apply to mods only");
-            return;
-        }
-        let core = self.core.clone();
-        let profile = self.profile();
-        let game = self.game_of(&profile);
-        let loader = profile.loader().id();
-        let dir = Content::Mod.dir(&core, &profile.id);
-        let index = self.mods.index.clone();
-        let threads = self.settings.threads as usize;
-        self.toast("Checking mod updates…");
-        background(move || {
-            let mut jobs = Vec::new();
-            let mut replacements = Vec::new();
-            for (project, entry) in index.projects {
-                let Ok(list) = modrinth::versions(&core.http, &core.ep, &core.paths, &project, &game, loader) else { continue };
-                let Some(version) = modrinth::pick(list, None) else { continue };
-                let Some(file) = version.primary() else { continue };
-                if file.filename == entry.file { continue; }
-                let Some(job) = version.job(&dir) else { continue };
-                replacements.push((project, entry.file, file.filename.clone()));
-                jobs.push(job);
-            }
-            let result = download::run(&core.http, jobs, threads, &Progress::default(), false).map(|_| replacements);
-            later(move |app| match result {
-                Ok(replacements) if replacements.is_empty() => app.toast("All mods are up to date"),
-                Ok(replacements) => {
-                    for (_, old, _) in &replacements {
-                        if bare_name(old) {
-                            let _ = std::fs::remove_file(dir.join(old));
-                        }
-                    }
-                    app.toast(format!("Updated {} mods", replacements.len()));
-                    app.refresh_mods();
-                }
-                Err(e) => app.toast(format!("Could not update mods: {e}")),
-            });
         });
     }
 

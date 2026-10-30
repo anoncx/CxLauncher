@@ -11,6 +11,7 @@ mod play;
 mod profiles;
 mod settings;
 mod updater;
+mod updates;
 
 use crate::auth::Accounts;
 use crate::mc::Endpoints;
