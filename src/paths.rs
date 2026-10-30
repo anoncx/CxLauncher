@@ -65,6 +65,10 @@ impl Paths {
         self.root.join("profiles").join(id)
     }
 
+    pub fn icon(&self, id: &str) -> PathBuf {
+        self.root.join("icons").join(format!("{id}.png"))
+    }
+
     pub fn cache(&self) -> PathBuf {
         self.root.join("cache")
     }

@@ -8,7 +8,7 @@ use crate::mc::{modmeta, modrinth};
 use crate::paths::{load_json, save_json};
 use crate::ModItem;
 use serde::{Deserialize, Serialize};
-use slint::Image;
+use slint::{Image, Model};
 use std::collections::{HashMap, HashSet};
 use std::io::Read;
 use std::path::{Path, PathBuf};
@@ -238,6 +238,14 @@ impl App {
         self.models.results.set_vec(Vec::new());
         self.refresh_mods();
         if self.ui().map(|u| u.get_mods_tab()).unwrap_or(0) == 1 {
+            let query = self.mods.find.query.clone();
+            self.find(Kind::Mod, query, true);
+        }
+    }
+
+    pub fn restore_discover(&mut self) {
+        let discovering = self.ui().is_some_and(|ui| ui.get_mods_tab() == 1);
+        if discovering && self.models.results.row_count() == 0 {
             let query = self.mods.find.query.clone();
             self.find(Kind::Mod, query, true);
         }

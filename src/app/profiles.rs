@@ -83,12 +83,18 @@ impl App {
             self.group_filter.clear();
         }
         let shown = if self.group_filter.is_empty() { Vec::new() } else { vec![self.group_filter.clone()] };
+        let mut pictures = std::collections::HashMap::new();
+        for p in &self.profiles.list {
+            pictures.insert(p.id.clone(), self.icons.image(&self.core.paths, &p.id));
+        }
         let items: Vec<ProfileItem> = self
             .profiles
             .list
             .iter()
             .filter(|p| shown.is_empty() || shown.contains(&p.group))
             .map(|p| ProfileItem {
+                icon: pictures.get(&p.id).cloned().flatten().unwrap_or_default(),
+                has_icon: pictures.get(&p.id).is_some_and(Option::is_some),
                 id: p.id.as_str().into(),
                 name: p.name.as_str().into(),
                 glyph: p.glyph.clamp(0, 5),
@@ -106,6 +112,9 @@ impl App {
         ui.set_profile_id(current.id.as_str().into());
         ui.set_profile_name(current.name.as_str().into());
         ui.set_profile_glyph(current.glyph.clamp(0, 5));
+        let current_icon = pictures.get(&current.id).cloned().flatten();
+        ui.set_profile_has_icon(current_icon.is_some());
+        ui.set_profile_icon(current_icon.unwrap_or_default());
         let client = if self.info.client_game.is_empty() { crate::client::GAME.to_string() } else { self.info.client_game.clone() };
         ui.set_client_game(client.as_str().into());
         self.refresh_versions();
@@ -221,6 +230,7 @@ impl App {
         self.load_client_info();
         if self.page() == 2 {
             self.refresh_mods();
+            self.restore_discover();
         }
     }
 
@@ -240,6 +250,7 @@ impl App {
             Some(id) => self.profiles.get(id).cloned().unwrap_or_else(|| self.profile()),
         };
         let include_snapshots = p.include_snapshots || self.needs_snapshots(&p.game);
+        self.begin_icon_edit(&p.id);
         self.version_filter = VersionFilter { snapshots: include_snapshots, query: String::new() };
         self.refresh_versions();
         ui.set_profile_edit(ProfileEdit {
@@ -301,6 +312,7 @@ impl App {
                 p.servers.push(crate::store::Server { name: p.server.clone(), address: p.server.clone() });
             }
         }
+        self.commit_icon(&id);
         self.profiles.save(&self.core.paths);
         if let Some(ui) = self.ui() {
             ui.set_profile_open(false);
@@ -335,6 +347,7 @@ impl App {
         self.profiles.list.retain(|p| p.id != id);
         self.profiles.save(&self.core.paths);
         let dir = self.core.paths.profile(id);
+        self.remove_icon(id);
         background(move || {
             let _ = std::fs::remove_dir_all(dir);
         });
@@ -367,6 +380,7 @@ impl App {
         copy.played = 0;
         self.profiles.add(copy);
         self.profiles.save(&self.core.paths);
+        self.copy_icon(&src.id, &new_id);
         let core = self.core.clone();
         let src_id = src.id.clone();
         background(move || {
@@ -426,6 +440,7 @@ impl App {
             return;
         }
         let title = self.hit_title(Kind::Pack, project);
+        let icon_url = self.packs.hits.iter().find(|h| h.project_id == project).and_then(|h| h.icon_url.clone()).filter(|u| !u.is_empty());
         let project = project.to_string();
         let finished = project.clone();
         let project_id = project.clone();
@@ -440,6 +455,9 @@ impl App {
                 Ok((file, pack_version))
             },
             move |app, id, pack, version| {
+                if let Some(url) = icon_url {
+                    app.fetch_pack_icon(id.clone(), url);
+                }
                 app.add_pack(id, pack, project_id, version);
                 app.end_install(Kind::Pack, &finished);
             },

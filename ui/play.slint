@@ -150,6 +150,8 @@ component PlayButton inherits Rectangle {
 component Chip inherits Rectangle {
     in property <string> text;
     in property <string> icon;
+    in property <image> picture;
+    in property <bool> has-picture;
     in property <bool> menu;
     callback clicked();
 
@@ -174,10 +176,22 @@ component Chip inherits Rectangle {
 
         VerticalLayout {
             alignment: center;
+            if root.has-picture: Rectangle {
+                width: 18px;
+                height: 18px;
+                clip: true;
+                border-radius: Theme.round(5px);
+                Image {
+                    width: parent.width;
+                    height: parent.height;
+                    source: root.picture;
+                    image-fit: cover;
+                }
+            }
             Icon {
-                width: root.icon != "" ? 13px : 0;
+                width: root.icon != "" && !root.has-picture ? 13px : 0;
                 height: 13px;
-                visible: root.icon != "";
+                visible: root.icon != "" && !root.has-picture;
                 commands: root.icon;
                 tint: Theme.accent;
             }
@@ -248,6 +262,8 @@ export component PlayPage inherits Rectangle {
     in property <string> last-played;
     in property <string> profile-name;
     in property <int> profile-glyph;
+    in property <image> profile-icon;
+    in property <bool> profile-has-icon;
     in property <[ProfileItem]> profiles;
     in property <string> profile-id;
     callback command(string);
@@ -310,6 +326,8 @@ export component PlayPage inherits Rectangle {
                 profile-chip := Chip {
                     text: root.profile-name;
                     icon: Icons.glyphs[root.profile-glyph];
+                    picture: root.profile-icon;
+                    has-picture: root.profile-has-icon;
                     menu: true;
                     clicked => { profile-menu.show(); }
                 }
@@ -461,7 +479,19 @@ export component PlayPage inherits Rectangle {
                     active: p.active;
                     clicked => { root.command("profile:" + p.id); }
 
-                    Icon {
+                    if p.has-icon: Rectangle {
+                        width: 22px;
+                        height: 22px;
+                        clip: true;
+                        border-radius: Theme.round(6px);
+                        Image {
+                            width: parent.width;
+                            height: parent.height;
+                            source: p.icon;
+                            image-fit: cover;
+                        }
+                    }
+                    if !p.has-icon: Icon {
                         commands: Icons.glyphs[p.glyph];
                         tint: p.active ? Theme.accent : Theme.ink-2;
                     }

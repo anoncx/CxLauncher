@@ -54,7 +54,8 @@ A profile is its own game folder with its own Minecraft version, loader, mods, w
 The **Profiles** page shows them as cards; press Play on any card, or switch from the chip above the title on the
 Play page. The editor has two tabs.
 
-**General**: name, icon, Minecraft version (Automatic or any release or snapshot), loader (Fabric, Quilt, Forge,
+**General**: name, icon (one of six symbols or your own image, and a modpack from Modrinth keeps its own icon),
+Minecraft version (Automatic or any release or snapshot), loader (Fabric, Quilt, Forge,
 NeoForge or Vanilla), a pinned loader version, Java runtime, a server to join on launch, and the optional CxVisuals
 switch. Builds of CxVisuals exist for several Minecraft versions and the launcher downloads the one that matches the
 profile.

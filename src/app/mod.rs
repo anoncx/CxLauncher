@@ -1,6 +1,7 @@
 mod accounts;
 mod console;
 mod finder;
+mod icons;
 mod images;
 mod import;
 mod instance;
@@ -72,6 +73,7 @@ pub struct App {
     import: import::Import,
     group_filter: String,
     pub sharing: bool,
+    icons: icons::Icons,
     pub pending_world: String,
     args: crate::cli::Args,
     update: Option<crate::update::Release>,
@@ -201,6 +203,8 @@ impl App {
             "content" => self.set_content(arg.parse().unwrap_or(0)),
             "filter-group" => self.filter_group(arg),
             "client-add" => self.add_client(),
+            "icon-pick" => self.pick_icon(),
+            "icon-clear" => self.clear_icon(),
             "play-world" => self.play_world(arg),
             "shortcut" => self.make_shortcut(arg),
             "client-hint-hide" => self.hide_client_hint(),
@@ -232,7 +236,10 @@ impl App {
     fn on_page(&mut self, page: i32) {
         match page {
             1 if self.models.packs.row_count() == 0 => self.find(finder::Kind::Pack, String::new(), true),
-            2 => self.refresh_mods(),
+            2 => {
+                self.refresh_mods();
+                self.restore_discover();
+            }
             3 => self.push_log(),
             4 => self.detect_javas(),
             _ => {}
@@ -327,6 +334,7 @@ pub fn run() -> Result<(), slint::PlatformError> {
         import: Default::default(),
         group_filter: String::new(),
         sharing: false,
+        icons: icons::Icons::default(),
         pending_world: String::new(),
         args: crate::cli::parse(std::env::args().skip(1)),
         update: None,

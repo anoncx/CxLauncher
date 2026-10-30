@@ -87,9 +87,10 @@ fn icon_cache(core: &Core, url: &str) -> PathBuf {
     core.paths.cache().join("icons").join(hex(&h.finalize()))
 }
 
-const GALLERY_EDGE: u32 = 1280;
-const BODY_EDGE: u32 = 1024;
+const GALLERY_EDGE: u32 = 2048;
+const BODY_EDGE: u32 = 1600;
 const GALLERY_LIMIT: usize = 12;
+const ICON_EDGE: u32 = 96;
 
 fn fetch_image(core: &Core, url: &str, edge: u32) -> Option<Pixels> {
     let cache = icon_cache(core, url);
@@ -275,7 +276,7 @@ impl App {
                     let _ = write_atomic(&cache, &b);
                     Some(b)
                 });
-                let Some(px) = bytes.and_then(|b| thumb(&b, 64)) else { continue };
+                let Some(px) = bytes.and_then(|b| thumb(&b, ICON_EDGE)) else { continue };
                 let id = hit.project_id.clone();
                 later(move |app| {
                     if generation != app.finder(kind).generation {
@@ -344,7 +345,7 @@ impl App {
                         let _ = write_atomic(&cache, &b);
                         Some(b)
                     })?;
-                    thumb(&bytes, 64)
+                    thumb(&bytes, ICON_EDGE)
                 });
             later(move |app| app.show_detail(kind, generation, result, author, icon));
         });

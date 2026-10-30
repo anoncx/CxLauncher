@@ -1,5 +1,5 @@
 import { Theme } from "theme.slint";
-import { Button, Icon, Icons, Input, Scroll, Segmented, Select, Sheet, SheetTitle, Spinner, Toggle } from "components.slint";
+import { Button, Icon, IconButton, Icons, Input, Scroll, Segmented, Select, Sheet, SheetTitle, Spinner, TipTrigger, Toggle } from "components.slint";
 import { VersionSelect } from "versions.slint";
 import { Command, ImportItem, ProfileEdit, ShotItem, VersionItem, WorldItem } from "types.slint";
 
@@ -328,6 +328,8 @@ export component ProfileSheet inherits Sheet {
     in property <[WorldItem]> worlds;
     in property <[ShotItem]> shots;
     in property <int> shot-count;
+    in property <image> icon;
+    in property <bool> has-icon;
     callback save(ProfileEdit);
     callback command(string);
 
@@ -407,22 +409,66 @@ export component ProfileSheet inherits Sheet {
             alignment: start;
 
             for g[i] in Icons.glyphs: Rectangle {
+                property <bool> chosen: i == root.glyph && !root.has-icon;
                 width: 38px;
                 height: 38px;
                 border-radius: Theme.round(11px);
-                background: i == root.glyph ? Theme.ink : pick.has-hover ? Theme.surface-2 : Theme.well;
+                background: chosen ? Theme.ink : pick.has-hover ? Theme.surface-2 : Theme.well;
                 transform-scale: pick.pressed ? 0.9 : 1;
                 animate background { duration: Theme.quick; }
                 animate transform-scale { duration: Theme.bounce; easing: cubic-bezier(0.34, 1.56, 0.64, 1); }
 
                 pick := TouchArea {
                     mouse-cursor: MouseCursor.pointer;
-                    clicked => { root.glyph = i; }
+                    clicked => {
+                        root.glyph = i;
+                        if (root.has-icon) {
+                            root.command("icon-clear");
+                        }
+                    }
                 }
 
                 Icon {
                     commands: g;
-                    tint: i == root.glyph ? Theme.paper : Theme.ink-2;
+                    tint: chosen ? Theme.paper : Theme.ink-2;
+                }
+            }
+
+            Rectangle {
+                width: 38px;
+                height: 38px;
+                clip: true;
+                border-radius: Theme.round(11px);
+                background: upload.has-hover ? Theme.surface-2 : Theme.well;
+                border-width: root.has-icon ? 2px : 0;
+                border-color: Theme.ink;
+                transform-scale: upload.pressed ? 0.9 : 1;
+                accessible-role: button;
+                accessible-label: "Choose an image";
+                animate background { duration: Theme.quick; }
+                animate transform-scale { duration: Theme.bounce; easing: cubic-bezier(0.34, 1.56, 0.64, 1); }
+
+                if root.has-icon: Image {
+                    width: parent.width;
+                    height: parent.height;
+                    source: root.icon;
+                    image-fit: cover;
+                }
+
+                if !root.has-icon: Icon {
+                    commands: Icons.picture;
+                    tint: Theme.ink-2;
+                }
+
+                upload := TouchArea {
+                    mouse-cursor: MouseCursor.pointer;
+                    clicked => { root.command("icon-pick"); }
+                }
+
+                TipTrigger {
+                    active: upload.has-hover;
+                    text: "Use your own image";
+                    side: "top";
                 }
             }
         }
@@ -467,7 +513,7 @@ export component ProfileSheet inherits Sheet {
         Segmented {
             items: ["Fabric", "Quilt", "Forge", "NeoForge", "Vanilla"];
             current: root.vanilla ? 4 : root.kind == "quilt" ? 1 : root.kind == "forge" ? 2 : root.kind == "neoforge" ? 3 : 0;
-            segment: 86px;
+            segment: 84px;
             tall: 32px;
             changed(i) => {
                 root.vanilla = i == 4;
@@ -524,7 +570,7 @@ export component ProfileSheet inherits Sheet {
                     alignment: center;
                     horizontal-stretch: 1;
                     Text {
-                        text: "Join a server on launch";
+                        text: "Join a server";
                         color: Theme.ink;
                     }
                 }
@@ -537,7 +583,7 @@ export component ProfileSheet inherits Sheet {
                     selected(id) => { root.server = id; }
                 }
                 Input {
-                    width: 160px;
+                    width: 140px;
                     mono: true;
                     icon: Icons.server;
                     placeholder: "play.example.net";
@@ -783,16 +829,24 @@ export component ProfileSheet inherits Sheet {
             }
         }
 
-        if root.data.id != "": Button {
-            text: "Folder";
-            icon: Icons.folder;
-            clicked => { root.command("open-profile-folder:" + root.data.id); }
+        if root.data.id != "": VerticalLayout {
+            alignment: center;
+            IconButton {
+                icon: Icons.folder;
+                tip: "Open folder";
+                tip-side: "top";
+                clicked => { root.command("open-profile-folder:" + root.data.id); }
+            }
         }
 
-        if root.data.id != "": Button {
-            text: "Shortcut";
-            icon: Icons.play;
-            clicked => { root.command("shortcut:" + root.data.id); }
+        if root.data.id != "": VerticalLayout {
+            alignment: center;
+            IconButton {
+                icon: Icons.shortcut;
+                tip: "Desktop shortcut";
+                tip-side: "top";
+                clicked => { root.command("shortcut:" + root.data.id); }
+            }
         }
 
         Rectangle { horizontal-stretch: 1; }

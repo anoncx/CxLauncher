@@ -72,6 +72,10 @@ export component AppWindow inherits Window {
     in property <string> profile-id;
     in property <string> profile-name;
     in property <int> profile-glyph;
+    in property <image> profile-icon;
+    in property <bool> profile-has-icon;
+    in property <image> edit-icon;
+    in property <bool> edit-has-icon;
     in-out property <int> profiles-tab;
     in property <[Command]> profile-groups;
     in-out property <string> profile-group;
@@ -297,6 +301,8 @@ export component AppWindow inherits Window {
                             profile-id: root.profile-id;
                             profile-name: root.profile-name;
                             profile-glyph: root.profile-glyph;
+                            profile-icon: root.profile-icon;
+                            profile-has-icon: root.profile-has-icon;
                             command(id) => { root.command(id); }
                         }
                     }
@@ -460,6 +466,8 @@ export component AppWindow inherits Window {
         versions: root.versions;
         profile-javas: root.profile-javas;
         client-game: root.client-game;
+        icon: root.edit-icon;
+        has-icon: root.edit-has-icon;
         worlds: root.worlds;
         shots: root.shots;
         shot-count: root.shot-count;

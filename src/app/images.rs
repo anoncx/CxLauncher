@@ -9,13 +9,13 @@ pub fn pixels(img: &RgbaImage) -> Pixels {
 
 pub fn thumb(bytes: &[u8], size: u32) -> Option<Pixels> {
     let img = image::load_from_memory(bytes).ok()?;
-    let img = if img.width() > size || img.height() > size { img.resize_to_fill(size, size, FilterType::Triangle) } else { img };
+    let img = if img.width() > size || img.height() > size { img.resize_to_fill(size, size, FilterType::CatmullRom) } else { img };
     Some(pixels(&img.to_rgba8()))
 }
 
 pub fn fit(bytes: &[u8], edge: u32) -> Option<Pixels> {
     let img = image::load_from_memory(bytes).ok()?;
-    let img = if img.width() > edge || img.height() > edge { img.resize(edge, edge, FilterType::Triangle) } else { img };
+    let img = if img.width() > edge || img.height() > edge { img.resize(edge, edge, FilterType::CatmullRom) } else { img };
     Some(pixels(&img.to_rgba8()))
 }
 
