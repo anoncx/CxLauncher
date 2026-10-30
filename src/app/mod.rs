@@ -203,6 +203,7 @@ impl App {
             "content" => self.set_content(arg.parse().unwrap_or(0)),
             "filter-group" => self.filter_group(arg),
             "client-add" => self.add_client(),
+            "client-check" => self.check_client(arg),
             "icon-pick" => self.pick_icon(),
             "icon-clear" => self.clear_icon(),
             "play-world" => self.play_world(arg),

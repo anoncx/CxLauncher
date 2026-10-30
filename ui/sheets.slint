@@ -325,6 +325,8 @@ export component ProfileSheet inherits Sheet {
     in property <[VersionItem]> versions;
     in property <[Command]> profile-javas;
     in property <string> client-game;
+    in property <string> client-fit-game;
+    in property <bool> client-fit;
     in property <[WorldItem]> worlds;
     in property <[ShotItem]> shots;
     in property <int> shot-count;
@@ -345,7 +347,7 @@ export component ProfileSheet inherits Sheet {
     property <bool> client-ok: !root.vanilla && root.kind == "fabric";
     property <string> loader-name: root.kind == "quilt" ? "Quilt" : root.kind == "forge" ? "Forge" : root.kind == "neoforge" ? "NeoForge" : "Fabric";
     property <bool> client: data.client;
-    property <bool> fits: root.game == "" || root.game == root.client-game;
+    property <bool> fits: root.game == "" || root.client-fit-game != root.game || root.client-fit;
     property <string> server: data.server;
     property <string> loader: data.loader;
     property <string> java: data.java;
@@ -492,7 +494,10 @@ export component ProfileSheet inherits Sheet {
                 current: root.game;
                 label: root.game == "" ? "Automatic" : root.game;
                 window-height: root.height;
-                selected(id) => { root.game = id; }
+                selected(id) => {
+                    root.game = id;
+                    root.command("client-check:" + id);
+                }
                 query-changed(query) => {
                     root.version-query = query;
                     root.filter-versions();
@@ -546,7 +551,7 @@ export component ProfileSheet inherits Sheet {
                         color: Theme.ink;
                     }
                     Text {
-                        text: !root.client-ok ? "CxVisuals needs the Fabric loader." : !root.fits && root.client ? "CxVisuals is made for Minecraft " + root.client-game + ". Pick that version or turn it off." : root.client ? "CxVisuals and Fabric API are added and kept up to date." : "Off. Only the mods you add.";
+                        text: !root.client-ok ? "CxVisuals needs the Fabric loader." : !root.fits && root.client ? "CxVisuals has no build for Minecraft " + root.game + ". Pick a supported version or turn it off." : root.client ? "CxVisuals and Fabric API are added and kept up to date." : "Off. Only the mods you add.";
                         font-size: 12px;
                         color: root.client-ok && !root.fits && root.client ? Theme.alert : Theme.grey;
                         wrap: word-wrap;

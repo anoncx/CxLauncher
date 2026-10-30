@@ -64,6 +64,18 @@ pub fn manifest(http: &Http, ep: &Endpoints, paths: &Paths, game: &str) -> Resul
     cached_json(http, &format!("{}?mc={game}", ep.client), &paths.meta().join(format!("client-{game}.json")))
 }
 
+fn verdict(result: &Result<Manifest, String>) -> Option<bool> {
+    match result {
+        Ok(_) => Some(true),
+        Err(e) if e.contains("answered 404") => Some(false),
+        Err(_) => None,
+    }
+}
+
+pub fn supports(http: &Http, ep: &Endpoints, paths: &Paths, game: &str) -> Option<bool> {
+    verdict(&manifest(http, ep, paths, game))
+}
+
 pub fn from_cloud(http: &Http, ep: &Endpoints, paths: &Paths, game: &str) -> Result<Client, String> {
     let m = manifest(http, ep, paths, game).map_err(|e| format!("cannot get {NAME} for Minecraft {game}: {e}"))?;
     if !valid_file(&m.file) {
@@ -111,6 +123,13 @@ mod tests {
     fn game_versions_are_checked_before_they_reach_a_path_or_url() {
         assert!(valid_game("26.3") && valid_game("1.21.11") && valid_game("26.4-snapshot-1"));
         assert!(!valid_game("") && !valid_game("../x") && !valid_game("26.3?x=1") && !valid_game("a/b"));
+    }
+
+    #[test]
+    fn tells_missing_builds_from_network_trouble() {
+        assert_eq!(verdict(&Ok(Manifest::default())), Some(true));
+        assert_eq!(verdict(&Err("visuals.cxiy.dev answered 404".into())), Some(false));
+        assert_eq!(verdict(&Err("you seem to be offline".into())), None);
     }
 
     #[test]

@@ -131,15 +131,45 @@ impl App {
         self.models.versions.set_vec(versions);
     }
 
-    pub fn add_client(&mut self) {
-        let id = self.profile().id;
-        let fits = |p: &Profile| p.game.trim().is_empty() || p.game == self.info.client_game;
-        if !self.profiles.get(&id).is_some_and(fits) {
-            self.toast(format!("CxVisuals is made for Minecraft {}. Pick that version first", self.info.client_game));
-            self.edit_profile(Some(""));
+    pub fn check_client(&mut self, game: &str) {
+        let game = game.trim().to_string();
+        if game.is_empty() {
             return;
         }
-        if let Some(p) = self.profiles.get_mut(&id) {
+        let core = self.core.clone();
+        background(move || {
+            let verdict = crate::client::supports(&core.http, &core.ep, &core.paths, &game);
+            later(move |app| {
+                if let (Some(ui), Some(fits)) = (app.ui(), verdict) {
+                    ui.set_client_fit_game(game.as_str().into());
+                    ui.set_client_fit(fits);
+                }
+            });
+        });
+    }
+
+    pub fn add_client(&mut self) {
+        let profile = self.profile();
+        let game = profile.game.trim().to_string();
+        if game.is_empty() {
+            self.enable_client(&profile.id);
+            return;
+        }
+        let core = self.core.clone();
+        background(move || {
+            let verdict = crate::client::supports(&core.http, &core.ep, &core.paths, &game);
+            later(move |app| match verdict {
+                Some(false) => {
+                    app.toast(format!("CxVisuals has no build for Minecraft {game} yet"));
+                    app.edit_profile(Some(""));
+                }
+                _ => app.enable_client(&profile.id),
+            });
+        });
+    }
+
+    fn enable_client(&mut self, id: &str) {
+        if let Some(p) = self.profiles.get_mut(id) {
             p.vanilla = false;
             p.client = true;
             if !p.loader().runs_client() {
@@ -251,6 +281,7 @@ impl App {
         };
         let include_snapshots = p.include_snapshots || self.needs_snapshots(&p.game);
         self.begin_icon_edit(&p.id);
+        self.check_client(&p.game);
         self.version_filter = VersionFilter { snapshots: include_snapshots, query: String::new() };
         self.refresh_versions();
         ui.set_profile_edit(ProfileEdit {

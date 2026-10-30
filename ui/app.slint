@@ -57,6 +57,8 @@ export component AppWindow inherits Window {
     in property <string> loader-name;
     in property <int> mod-count;
     in property <string> client-game;
+    in property <string> client-fit-game;
+    in property <bool> client-fit;
     in property <bool> client-on: true;
     in property <bool> client-hint;
     in property <int> state;
@@ -466,6 +468,8 @@ export component AppWindow inherits Window {
         versions: root.versions;
         profile-javas: root.profile-javas;
         client-game: root.client-game;
+        client-fit-game: root.client-fit-game;
+        client-fit: root.client-fit;
         icon: root.edit-icon;
         has-icon: root.edit-has-icon;
         worlds: root.worlds;
