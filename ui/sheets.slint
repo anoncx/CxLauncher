@@ -931,3 +931,40 @@ export component ImportSheet inherits Sheet {
         }
     }
 }
+
+export component ShareSheet inherits Sheet {
+    in property <bool> busy;
+    callback command(string);
+
+    card-width: 460px;
+
+    SheetTitle {
+        text: "Share this log";
+        badge: "OPTIONAL";
+        live: root.busy;
+    }
+
+    Text {
+        text: "This uploads the log from the Console to mclo.gs, a public paste service. Anyone with the link can read it, and it stays online until it expires. Your sign-in token and your home folder path are removed first, but look through the log for anything else private. Nothing is uploaded unless you press Upload.";
+        color: Theme.ink-2;
+        wrap: word-wrap;
+    }
+
+    HorizontalLayout {
+        spacing: 8px;
+        alignment: end;
+
+        Button {
+            text: "Cancel";
+            enabled: !root.busy;
+            clicked => { root.close(); }
+        }
+
+        Button {
+            text: root.busy ? "Uploading…" : "Upload";
+            kind: "primary";
+            enabled: !root.busy;
+            clicked => { root.command("share-send"); }
+        }
+    }
+}

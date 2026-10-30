@@ -5,6 +5,7 @@ slint::include_modules!();
 mod app;
 mod auth;
 mod client;
+mod crash;
 mod download;
 #[cfg(test)]
 mod e2e;
@@ -14,6 +15,7 @@ mod install;
 mod mc;
 mod net;
 mod paths;
+mod share;
 mod skin;
 mod store;
 mod sys;

@@ -11,7 +11,7 @@ import { ModsPage } from "mods.slint";
 import { ProfilesPage } from "profiles.slint";
 import { ConsolePage } from "console.slint";
 import { SettingsPage } from "settings.slint";
-import { ImportSheet, ProfileSheet, SigninSheet } from "sheets.slint";
+import { ImportSheet, ProfileSheet, ShareSheet, SigninSheet } from "sheets.slint";
 import { ModDetailSheet } from "detail.slint";
 import { AccountItem, BodyBlock, Command, FindItem, ImportItem, JavaItem, LogLine, ModImage, ModItem, ModDetail, ModLink, NavItem, ProfileEdit, ProfileItem, SettingsView, ShotItem, VersionItem, WorldItem } from "types.slint";
 
@@ -112,6 +112,8 @@ export component AppWindow inherits Window {
     in property <string> signin-error;
 
     in property <bool> import-open;
+    in property <bool> share-open;
+    in property <bool> share-busy;
     in property <[ImportItem]> imports;
     in property <bool> import-busy;
     in property <int> import-picked;
@@ -464,6 +466,12 @@ export component AppWindow inherits Window {
         save(p) => { root.profile-save(p); }
         command(id) => { root.command(id); }
         close => { root.profile-open = false; }
+    }
+
+    if root.share-open: ShareSheet {
+        busy: root.share-busy;
+        command(id) => { root.command(id); }
+        close => { root.command("share-close"); }
     }
 
     if root.import-open: ImportSheet {

@@ -1,4 +1,4 @@
-use super::App;
+use super::{background, later, App};
 use crate::game::Level;
 use crate::LogLine;
 
@@ -60,6 +60,14 @@ impl Console {
             .collect()
     }
 
+    pub fn recent(&self, count: usize) -> impl Iterator<Item = &str> {
+        self.lines[self.lines.len().saturating_sub(count)..].iter().map(|(_, text)| text.as_str())
+    }
+
+    pub fn full(&self) -> String {
+        self.lines.iter().map(|(_, text)| text.as_str()).collect::<Vec<_>>().join("\n")
+    }
+
     pub fn text(&self) -> String {
         self.shown.iter().map(|&i| self.lines[i as usize].1.as_str()).collect::<Vec<_>>().join("\n")
     }
@@ -99,6 +107,56 @@ impl App {
         self.console.reindex();
         self.console.first = self.console.shown.len().saturating_sub(self.console.rows);
         self.push_log();
+    }
+
+    pub fn share_open(&mut self) {
+        if self.console.is_empty() {
+            self.toast("Nothing to share yet");
+            return;
+        }
+        if let Some(ui) = self.ui() {
+            ui.set_share_open(true);
+        }
+    }
+
+    pub fn share_close(&mut self) {
+        if self.sharing {
+            return;
+        }
+        if let Some(ui) = self.ui() {
+            ui.set_share_open(false);
+        }
+    }
+
+    pub fn share_send(&mut self) {
+        if self.sharing {
+            return;
+        }
+        self.sharing = true;
+        if let Some(ui) = self.ui() {
+            ui.set_share_busy(true);
+        }
+        let home = dirs::home_dir().map(|h| h.to_string_lossy().into_owned());
+        let text = crate::share::prepare(&self.console.full(), home.as_deref());
+        let core = self.core.clone();
+        background(move || {
+            let result = crate::share::upload(&core.http, &core.ep, &text);
+            later(move |app| {
+                app.sharing = false;
+                if let Some(ui) = app.ui() {
+                    ui.set_share_busy(false);
+                }
+                match result {
+                    Ok(url) => {
+                        if let Some(ui) = app.ui() {
+                            ui.set_share_open(false);
+                        }
+                        app.copy(url, "Link copied. Anyone with it can read the log");
+                    }
+                    Err(e) => app.toast(format!("Could not upload the log: {e}")),
+                }
+            });
+        });
     }
 
     pub fn copy_log(&mut self) {

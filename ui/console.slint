@@ -93,6 +93,15 @@ export component ConsolePage inherits Rectangle {
             VerticalLayout {
                 alignment: center;
                 Button {
+                    icon: Icons.upload;
+                    text: "Share";
+                    clicked => { root.command("share-open"); }
+                }
+            }
+
+            VerticalLayout {
+                alignment: center;
+                Button {
                     icon: Icons.folder;
                     text: "Logs";
                     clicked => { root.command("open-logs"); }

@@ -266,7 +266,11 @@ impl App {
             ui.window().set_minimized(false);
         }
         if code != 0 && !stopping {
-            self.info.error = format!("Minecraft closed with an error (code {code}). The console has the details.");
+            let cause = crate::crash::analyze(self.console.recent(4000)).into_iter().next();
+            self.info.error = match cause {
+                Some(found) => format!("Minecraft closed with an error (code {code}). {}. {}", found.title, found.advice),
+                None => format!("Minecraft closed with an error (code {code}). The console has the details."),
+            };
             self.go(3);
         }
         self.push_profiles();
