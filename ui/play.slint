@@ -188,10 +188,9 @@ component Chip inherits Rectangle {
                     image-fit: cover;
                 }
             }
-            Icon {
-                width: root.icon != "" && !root.has-picture ? 13px : 0;
+            if root.icon != "" && !root.has-picture: Icon {
+                width: 13px;
                 height: 13px;
-                visible: root.icon != "" && !root.has-picture;
                 commands: root.icon;
                 tint: Theme.accent;
             }
