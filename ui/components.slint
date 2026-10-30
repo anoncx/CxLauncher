@@ -118,7 +118,7 @@ export component TipLayer inherits Rectangle {
         height: 24px;
         x: max(6px, min(root.width - self.width - 6px, Hint.x - self.width / 2));
         y: max(6px, min(root.height - self.height - 6px, Hint.side == "top" ? Hint.y - self.height - root.gap : Hint.y + root.gap));
-        border-radius: 7px;
+        border-radius: Theme.round(7px);
         background: Theme.ink;
         opacity: Hint.shown ? 1 : 0;
         transform-scale: Hint.shown ? 1 : 0.92;
@@ -147,7 +147,7 @@ export component IconButton inherits Rectangle {
 
     width: size;
     height: size;
-    border-radius: self.height / 2;
+    border-radius: Theme.pill(self.height);
     background: active ? Theme.ink : touch.has-hover && enabled ? Theme.surface-2 : transparent;
     opacity: enabled ? 1 : 0.35;
     transform-scale: touch.pressed && enabled ? 0.9 : 1;
@@ -187,7 +187,7 @@ export component Toggle inherits Rectangle {
 
     width: 38px;
     height: 23px;
-    border-radius: self.height / 2;
+    border-radius: Theme.pill(self.height);
     background: checked ? Theme.accent : Theme.surface-2;
     accessible-role: checkbox;
     accessible-checkable: true;
@@ -212,7 +212,7 @@ export component Toggle inherits Rectangle {
         height: 18px;
         width: touch.pressed ? 23px : 18px;
         x: root.checked ? root.width - self.width - 2.5px : 2.5px;
-        border-radius: 9px;
+        border-radius: Theme.round(9px);
         background: Theme.accent-index == 6 && root.checked ? Theme.paper : #ffffff;
         drop-shadow-blur: 3px;
         drop-shadow-offset-y: 1px;
@@ -234,7 +234,7 @@ export component Segmented inherits Rectangle {
 
     width: segment * items.length + 6px;
     height: tall;
-    border-radius: self.height / 2;
+    border-radius: Theme.pill(self.height);
     background: Theme.surface-2;
 
     Rectangle {
@@ -242,7 +242,7 @@ export component Segmented inherits Rectangle {
         y: 3px;
         width: root.segment;
         height: root.height - 6px;
-        border-radius: self.height / 2;
+        border-radius: Theme.pill(self.height);
         background: Theme.raised;
         drop-shadow-blur: 3px;
         drop-shadow-offset-y: 1px;
@@ -252,7 +252,7 @@ export component Segmented inherits Rectangle {
         animate transform-scale { duration: Theme.bounce; easing: cubic-bezier(0.34, 1.56, 0.64, 1); }
 
         Edge {
-            inset: parent.height / 2;
+            inset: Theme.pill(parent.height);
         }
     }
 
@@ -315,7 +315,7 @@ export component Button inherits Rectangle {
 
     height: tall;
     horizontal-stretch: 0;
-    border-radius: self.height / 2;
+    border-radius: Theme.pill(self.height);
     background: face;
     opacity: enabled ? 1 : 0.4;
     accessible-role: button;
@@ -370,7 +370,7 @@ export component Input inherits Rectangle {
     height: 32px;
     min-width: 60px;
     clip: true;
-    border-radius: 9px;
+    border-radius: Theme.round(9px);
     border-width: 1px;
     border-color: field.has-focus ? Theme.focus : transparent;
     background: field.has-focus ? Theme.surface : Theme.surface-2;
@@ -426,7 +426,7 @@ export component Input inherits Rectangle {
 }
 
 export component Popover inherits Rectangle {
-    border-radius: 12px;
+    border-radius: Theme.round(12px);
     background: Theme.surface;
     border-width: 1px;
     border-color: Theme.hair;
@@ -457,7 +457,7 @@ export component MenuAction inherits Rectangle {
     callback clicked();
 
     height: 30px;
-    border-radius: 7px;
+    border-radius: Theme.round(7px);
     background: touch.has-hover ? Theme.surface-2 : transparent;
 
     touch := TouchArea {
@@ -497,7 +497,7 @@ export component MenuPick inherits Rectangle {
     callback clicked();
 
     height: 44px;
-    border-radius: 8px;
+    border-radius: Theme.round(8px);
     background: touch.has-hover ? Theme.surface-2 : transparent;
 
     touch := TouchArea {
@@ -555,7 +555,7 @@ export component MenuSheet inherits Popover {
 
     for item in root.items: Rectangle {
         height: item.id == "-" ? 9px : item.detail != "" ? 40px : 30px;
-        border-radius: 7px;
+        border-radius: Theme.round(7px);
         background: row.has-hover && item.id != "-" ? Theme.surface-2 : transparent;
 
         if item.id == "-": MenuDivider { }
@@ -613,7 +613,7 @@ export component Select inherits Rectangle {
 
     height: 32px;
     min-width: text.preferred-width + 44px;
-    border-radius: 9px;
+    border-radius: Theme.round(9px);
     background: touch.has-hover ? Theme.surface : Theme.surface-2;
     border-width: 1px;
     border-color: touch.has-hover ? Theme.hair : transparent;
@@ -749,6 +749,7 @@ export component Swatches inherits HorizontalLayout {
     in property <[color]> colors;
     in property <[string]> names;
     in property <int> current;
+    in property <int> mono: -1;
     callback picked(int);
 
     spacing: 8px;
@@ -757,8 +758,10 @@ export component Swatches inherits HorizontalLayout {
     for c[i] in root.colors: Rectangle {
         width: 20px;
         height: 20px;
-        border-radius: 10px;
-        background: i == 6 ? Theme.ink : c;
+        border-radius: Theme.pill(self.height);
+        border-width: 1px;
+        border-color: Theme.hair;
+        background: i == root.mono ? Theme.ink : c;
         accessible-role: button;
         accessible-label: root.names[i];
         transform-scale: touch.pressed ? 0.85 : touch.has-hover ? 1.12 : 1;
@@ -767,7 +770,7 @@ export component Swatches inherits HorizontalLayout {
         Rectangle {
             width: parent.width + 7px;
             height: parent.height + 7px;
-            border-radius: self.height / 2;
+            border-radius: Theme.pill(self.height);
             border-width: 1.5px;
             border-color: i == root.current ? Theme.ink : transparent;
             animate border-color { duration: Theme.quick; }
@@ -814,7 +817,7 @@ export component Slider inherits Rectangle {
     Rectangle {
         y: (parent.height - self.height) / 2;
         height: 4px;
-        border-radius: 2px;
+        border-radius: Theme.round(2px);
         background: Theme.surface-2;
     }
 
@@ -823,7 +826,7 @@ export component Slider inherits Rectangle {
         y: (parent.height - self.height) / 2;
         width: root.ratio * root.width;
         height: 4px;
-        border-radius: 2px;
+        border-radius: Theme.round(2px);
         background: Theme.accent;
     }
 
@@ -832,7 +835,7 @@ export component Slider inherits Rectangle {
         y: (parent.height - self.height) / 2 - 5px;
         width: 2px;
         height: 4px;
-        border-radius: 1px;
+        border-radius: Theme.round(1px);
         background: Theme.grey;
     }
 
@@ -841,7 +844,7 @@ export component Slider inherits Rectangle {
         y: (parent.height - self.height) / 2;
         width: touch.pressed ? 22px : 18px;
         height: self.width;
-        border-radius: self.width / 2;
+        border-radius: Theme.pill(self.width);
         background: #ffffff;
         drop-shadow-blur: 4px;
         drop-shadow-offset-y: 1px;
@@ -930,7 +933,7 @@ export component Dots inherits Rectangle {
         x: i * (root.dot + root.gap);
         width: root.dot;
         height: root.dot;
-        border-radius: root.dot / 2;
+        border-radius: Theme.pill(root.dot);
         background: lead ? Theme.accent : on ? Theme.ink : Theme.dot-off;
         animate background { duration: Theme.calm ? 0ms : 120ms; }
     }
@@ -957,7 +960,7 @@ export component Spinner inherits Rectangle {
         y: root.size / 2 + Math.sin(a) * root.size * 0.38 - self.height / 2;
         width: root.size * 0.18;
         height: self.width;
-        border-radius: self.width / 2;
+        border-radius: Theme.pill(self.width);
         background: age == 0 ? Theme.accent : Theme.ink.transparentize(0.25 + age * 0.09);
     }
 }
@@ -984,7 +987,7 @@ export component Scroll inherits Rectangle {
         y: 4px + (-flick.content-y / (root.content-height - root.height)) * (root.height - 8px - self.height);
         width: 4px;
         height: max(28px, (root.height - 8px) * part);
-        border-radius: 2px;
+        border-radius: Theme.round(2px);
         background: Theme.grey;
         opacity: 0.3;
     }
@@ -1026,7 +1029,7 @@ export component Sheet inherits Rectangle {
         y: max(24px, (root.height - self.height) / 2);
         width: min(root.card-width, root.width - 48px);
         height: body.preferred-height;
-        border-radius: 18px;
+        border-radius: Theme.round(18px);
         background: Theme.surface;
         drop-shadow-blur: Theme.effects ? 40px : 0;
         drop-shadow-offset-y: 16px;
@@ -1038,7 +1041,7 @@ export component Sheet inherits Rectangle {
 
         TouchArea { }
 
-        Edge { inset: 18px; }
+        Edge { inset: Theme.round(18px); }
 
         body := VerticalLayout {
             padding: 24px;
@@ -1061,7 +1064,7 @@ export component SheetTitle inherits HorizontalLayout {
         Rectangle {
             width: 8px;
             height: 8px;
-            border-radius: 4px;
+            border-radius: Theme.round(4px);
             background: root.live ? Theme.accent : Theme.grey;
             animate background { duration: 200ms; }
         }
@@ -1098,7 +1101,7 @@ export component Avatar inherits Rectangle {
 
     width: size;
     height: size;
-    border-radius: size * 0.28;
+    border-radius: Theme.round(size * 0.28);
     background: Theme.surface-2;
     clip: true;
 

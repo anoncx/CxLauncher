@@ -1,11 +1,69 @@
 use super::{background, later, App};
 use crate::mc::java;
 use crate::sys::Machine;
-use crate::{Command, SettingsView, Theme};
-use slint::ComponentHandle;
+use crate::store::Settings;
+use crate::{AppWindow, Command, SettingsView, Theme};
+use slint::{Color, ComponentHandle, ModelRc, VecModel};
+
+const BACKGROUNDS: [(&str, &str); 7] = [
+    ("Graphite", "#17181c"),
+    ("Midnight", "#0a1020"),
+    ("Forest", "#0b1712"),
+    ("Plum", "#170e18"),
+    ("Linen", "#efe7d8"),
+    ("Mist", "#e6edf5"),
+    ("Rose", "#f5e6e9"),
+];
 
 fn command(id: &str, title: &str, detail: &str) -> Command {
     Command { id: id.into(), title: title.into(), detail: detail.into() }
+}
+
+fn parse_hex(text: &str) -> Option<[u8; 3]> {
+    let digits = text.trim().trim_start_matches('#');
+    if digits.len() != 6 || !digits.is_ascii() {
+        return None;
+    }
+    let channel = |i: usize| u8::from_str_radix(&digits[i * 2..i * 2 + 2], 16).ok();
+    Some([channel(0)?, channel(1)?, channel(2)?])
+}
+
+fn is_dark([r, g, b]: [u8; 3]) -> bool {
+    let linear = |c: u8| {
+        let c = c as f32 / 255.0;
+        if c <= 0.04045 {
+            c / 12.92
+        } else {
+            ((c + 0.055) / 1.055).powf(2.4)
+        }
+    };
+    0.2126 * linear(r) + 0.7152 * linear(g) + 0.0722 * linear(b) < 0.18
+}
+
+fn hex([r, g, b]: [u8; 3]) -> String {
+    format!("#{r:02x}{g:02x}{b:02x}")
+}
+
+pub fn install_backgrounds(ui: &AppWindow) {
+    let rgb = |hex: &str| parse_hex(hex).map(|[r, g, b]| Color::from_rgb_u8(r, g, b)).unwrap_or_default();
+    let theme = ui.global::<Theme>();
+    theme.set_backgrounds(ModelRc::new(VecModel::from_iter(BACKGROUNDS.iter().map(|(_, h)| rgb(h)))));
+    theme.set_background_names(ModelRc::new(VecModel::from_iter(BACKGROUNDS.iter().map(|(n, _)| (*n).into()))));
+}
+
+pub fn apply_theme(ui: &AppWindow, s: &Settings) {
+    let theme = ui.global::<Theme>();
+    let paper = parse_hex(&s.background);
+    theme.set_mode(s.theme);
+    theme.set_accent_index(s.accent);
+    theme.set_effects(s.effects);
+    theme.set_calm(s.reduce_motion);
+    theme.set_roundness_index(s.roundness);
+    theme.set_has_paper(paper.is_some());
+    if let Some(rgb @ [r, g, b]) = paper {
+        theme.set_custom_paper(Color::from_rgb_u8(r, g, b));
+        theme.set_custom_dark(is_dark(rgb));
+    }
 }
 
 impl App {
@@ -44,6 +102,8 @@ impl App {
             version: concat!("v", env!("CARGO_PKG_VERSION")).into(),
             update: self.update.as_ref().map(|u| u.version.as_str()).unwrap_or_default().into(),
             update_busy: self.update_busy,
+            background: s.background.as_str().into(),
+            background_index: BACKGROUNDS.iter().position(|(_, h)| *h == s.background).map_or(-1, |i| i as i32),
             machine: format!("{:.0} GB RAM, {} cores", machine.memory_mb as f32 / 1024.0, machine.cores).into(),
         });
         let mut javas = vec![command("", "Managed by CxLauncher", "Downloads the Java Minecraft asks for")];
@@ -69,33 +129,19 @@ impl App {
         let on = value == "1";
         let number = value.trim().parse::<i64>().ok();
         let ui = self.ui();
-        let theme = ui.as_ref().map(|ui| ui.global::<Theme>());
         let s = &mut self.settings;
         match key {
-            "theme" => {
-                s.theme = number.unwrap_or(0).clamp(0, 2) as i32;
-                if let Some(t) = &theme {
-                    t.set_mode(s.theme);
-                }
-            }
-            "accent" => {
-                s.accent = number.unwrap_or(0).clamp(0, 6) as i32;
-                if let Some(t) = &theme {
-                    t.set_accent_index(s.accent);
-                }
-            }
-            "effects" => {
-                s.effects = on;
-                if let Some(t) = &theme {
-                    t.set_effects(on);
-                }
-            }
-            "calm" => {
-                s.reduce_motion = on;
-                if let Some(t) = &theme {
-                    t.set_calm(on);
-                }
-            }
+            "theme" => s.theme = number.unwrap_or(0).clamp(0, 2) as i32,
+            "accent" => s.accent = number.unwrap_or(0).clamp(0, 6) as i32,
+            "effects" => s.effects = on,
+            "calm" => s.reduce_motion = on,
+            "roundness" => s.roundness = number.unwrap_or(2).clamp(0, 3) as i32,
+            "background-preset" => s.background = number.and_then(|i| BACKGROUNDS.get(i as usize)).map(|(_, h)| h.to_string()).unwrap_or_default(),
+            "background" if value.trim().is_empty() => s.background.clear(),
+            "background" => match parse_hex(value) {
+                Some(rgb) => s.background = hex(rgb),
+                None => return,
+            },
             "memory" => s.memory = number.unwrap_or(s.memory as i64).clamp(1024, Machine::get().max_memory().max(1024) as i64) as u32,
             "width" => s.width = number.unwrap_or(0).clamp(0, 16384) as u32,
             "height" => s.height = number.unwrap_or(0).clamp(0, 16384) as u32,
@@ -113,6 +159,9 @@ impl App {
                 self.load_client_info();
             }
             _ => return,
+        }
+        if let Some(ui) = &ui {
+            apply_theme(ui, &self.settings);
         }
         self.save();
         if !matches!(key, "width" | "height" | "jvm-args") {

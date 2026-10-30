@@ -21,7 +21,7 @@ component ListView inherits Rectangle {
         y: 4px + (-root.content-y / (root.content-height - root.height)) * (root.height - 8px - self.height);
         width: 4px;
         height: max(28px, (root.height - 8px) * part);
-        border-radius: 2px;
+        border-radius: Theme.round(2px);
         background: Theme.grey;
         opacity: 0.35;
     }
@@ -32,7 +32,7 @@ component Tag inherits Rectangle {
 
     height: 16px;
     width: label.preferred-width + 12px;
-    border-radius: 5px;
+    border-radius: Theme.round(5px);
     background: Theme.surface-2;
 
     label := Text {
@@ -51,7 +51,7 @@ component VersionRow inherits Rectangle {
     callback chosen();
 
     height: 34px;
-    border-radius: 8px;
+    border-radius: Theme.round(8px);
     background: touch.has-hover ? Theme.surface-2 : transparent;
     animate background { duration: Theme.quick; }
 
@@ -119,7 +119,7 @@ export component VersionSelect inherits Rectangle {
 
     height: 32px;
     min-width: text.preferred-width + 44px;
-    border-radius: 9px;
+    border-radius: Theme.round(9px);
     background: touch.has-hover ? Theme.surface : Theme.surface-2;
     border-width: 1px;
     border-color: touch.has-hover ? Theme.hair : transparent;
@@ -173,7 +173,7 @@ export component VersionSelect inherits Rectangle {
         close-policy: PopupClosePolicy.close-on-click-outside;
 
         Rectangle {
-            border-radius: 12px;
+            border-radius: Theme.round(12px);
             background: Theme.surface;
             border-width: 1px;
             border-color: Theme.hair;

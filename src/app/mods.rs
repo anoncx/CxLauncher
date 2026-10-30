@@ -1,10 +1,11 @@
 use super::finder::{Finder, Kind};
 use super::images::{thumb, Pixels};
+use super::options;
 use super::{background, first_letter, later, App, Core};
 use crate::download::{self, Progress};
 use crate::install::{files_ext, jars};
 use crate::mc::{modmeta, modrinth};
-use crate::paths::{load_json, save_json, write_atomic};
+use crate::paths::{load_json, save_json};
 use crate::ModItem;
 use serde::{Deserialize, Serialize};
 use slint::Image;
@@ -148,42 +149,12 @@ fn scan(dir: &Path, ext: &str, known: &HashSet<String>) -> Vec<Found> {
         .collect()
 }
 
-fn options_path(core: &Core, profile: &str) -> PathBuf {
-    core.paths.profile(profile).join("options.txt")
-}
-
 fn bare_name(name: &str) -> bool {
     !name.is_empty() && name != "." && name != ".." && !name.contains(['/', '\\', ':'])
 }
 
-fn read_options(path: &Path) -> Vec<String> {
-    std::fs::read_to_string(path).map(|s| s.lines().map(|l| l.to_string()).collect()).unwrap_or_default()
-}
-
-fn write_options(path: &Path, lines: &[String]) -> Result<(), String> {
-    if let Some(dir) = path.parent() {
-        let _ = std::fs::create_dir_all(dir);
-    }
-    let mut text = lines.join("\n");
-    text.push('\n');
-    write_atomic(path, text.as_bytes()).map_err(|e| e.to_string())
-}
-
-fn option<'a>(lines: &'a [String], key: &str) -> Option<&'a str> {
-    let prefix = format!("{key}:");
-    lines.iter().find_map(|l| l.strip_prefix(&prefix))
-}
-
-fn set_option(lines: &mut Vec<String>, key: &str, value: &str) {
-    let prefix = format!("{key}:");
-    match lines.iter_mut().find(|l| l.starts_with(&prefix)) {
-        Some(line) => *line = format!("{key}:{value}"),
-        None => lines.push(format!("{key}:{value}")),
-    }
-}
-
 fn resource_packs(lines: &[String]) -> Vec<String> {
-    option(lines, "resourcePacks").and_then(|v| serde_json::from_str::<Vec<String>>(v).ok()).unwrap_or_default()
+    options::get(lines, "resourcePacks").and_then(|v| serde_json::from_str::<Vec<String>>(v).ok()).unwrap_or_default()
 }
 
 #[derive(Clone, Copy)]
@@ -276,20 +247,20 @@ impl App {
         let profile = self.profile();
         let core = self.core.clone();
         let dir = content.dir(&core, &profile.id);
-        let opts = options_path(&core, &profile.id);
+        let opts = options::path(&core, &profile.id);
         let known: HashSet<String> = self.mods.icons.keys().cloned().collect();
         background(move || {
             let mut found = scan(&dir, content.ext(), &known);
             match content {
                 Content::Mod => {}
                 Content::ResourcePack => {
-                    let packs = resource_packs(&read_options(&opts));
+                    let packs = resource_packs(&options::read(&opts));
                     for f in &mut found {
                         f.enabled = packs.iter().any(|p| p == &format!("file/{}", f.file) || p == &f.file);
                     }
                 }
                 Content::Shader => {
-                    let active = option(&read_options(&opts), "shaderPack").map(str::to_string);
+                    let active = options::get(&options::read(&opts), "shaderPack").map(str::to_string);
                     for f in &mut found {
                         f.enabled = active.as_deref() == Some(f.file.as_str());
                     }
@@ -406,8 +377,8 @@ impl App {
                 }
             }
             Content::ResourcePack => {
-                let path = options_path(&self.core, &profile);
-                let mut lines = read_options(&path);
+                let path = options::path(&self.core, &profile);
+                let mut lines = options::read(&path);
                 let mut packs = resource_packs(&lines);
                 let entry = format!("file/{file}");
                 if on && !packs.contains(&entry) {
@@ -417,16 +388,16 @@ impl App {
                     packs.retain(|p| p != &entry && p != file);
                 }
                 let value = serde_json::to_string(&packs).unwrap_or_default();
-                set_option(&mut lines, "resourcePacks", &value);
-                if write_options(&path, &lines).is_err() {
+                options::set(&mut lines, "resourcePacks", &value);
+                if options::write(&path, &lines).is_err() {
                     self.toast("Could not change that resource pack");
                 }
             }
             Content::Shader => {
-                let path = options_path(&self.core, &profile);
-                let mut lines = read_options(&path);
-                set_option(&mut lines, "shaderPack", if on { file } else { "OFF" });
-                if write_options(&path, &lines).is_err() {
+                let path = options::path(&self.core, &profile);
+                let mut lines = options::read(&path);
+                options::set(&mut lines, "shaderPack", if on { file } else { "OFF" });
+                if options::write(&path, &lines).is_err() {
                     self.toast("Could not change that shader");
                 }
             }
@@ -443,21 +414,21 @@ impl App {
             return;
         }
         self.toast(format!("Removed {}", file.trim_end_matches(".disabled")));
-        let opts = options_path(&self.core, &profile);
+        let opts = options::path(&self.core, &profile);
         match content {
             Content::ResourcePack => {
-                let mut lines = read_options(&opts);
+                let mut lines = options::read(&opts);
                 let mut packs = resource_packs(&lines);
                 packs.retain(|p| p != &format!("file/{file}") && p != file);
                 let value = serde_json::to_string(&packs).unwrap_or_default();
-                set_option(&mut lines, "resourcePacks", &value);
-                let _ = write_options(&opts, &lines);
+                options::set(&mut lines, "resourcePacks", &value);
+                let _ = options::write(&opts, &lines);
             }
             Content::Shader => {
-                let mut lines = read_options(&opts);
-                if option(&lines, "shaderPack") == Some(file) {
-                    set_option(&mut lines, "shaderPack", "OFF");
-                    let _ = write_options(&opts, &lines);
+                let mut lines = options::read(&opts);
+                if options::get(&lines, "shaderPack") == Some(file) {
+                    options::set(&mut lines, "shaderPack", "OFF");
+                    let _ = options::write(&opts, &lines);
                 }
             }
             Content::Mod => {}

@@ -61,7 +61,49 @@ export component SettingsPage inherits Rectangle {
                             colors: Theme.accents;
                             names: Theme.accent-names;
                             current: Theme.accent-index;
+                            mono: 6;
                             picked(i) => { root.setting("accent", i); }
+                        }
+                    }
+
+                    Row {
+                        title: "Background";
+                        detail: "Surfaces and text adapt to the colour you pick.";
+                        Swatches {
+                            colors: Theme.backgrounds;
+                            names: Theme.background-names;
+                            current: root.data.background-index;
+                            picked(i) => { root.setting("background-preset", i); }
+                        }
+                    }
+
+                    Row {
+                        title: "Custom background";
+                        detail: "Any hex colour, for example #14202b.";
+                        HorizontalLayout {
+                            spacing: 8px;
+                            if root.data.background != "": Button {
+                                text: "Reset";
+                                clicked => { root.setting("background", ""); }
+                            }
+                            Input {
+                                width: 92px;
+                                mono: true;
+                                placeholder: "#rrggbb";
+                                value: root.data.background;
+                                edited(t) => { root.setting("background", t); }
+                            }
+                        }
+                    }
+
+                    Row {
+                        title: "Roundness";
+                        detail: "Corner style for cards, buttons and fields.";
+                        Segmented {
+                            items: ["Sharp", "Soft", "Default", "Round"];
+                            current: Theme.roundness-index;
+                            segment: 66px;
+                            changed(i) => { root.setting("roundness", i); }
                         }
                     }
 

@@ -9,6 +9,8 @@ pub struct Settings {
     pub theme: i32,
     pub accent: i32,
     pub effects: bool,
+    pub background: String,
+    pub roundness: i32,
     pub reduce_motion: bool,
     pub memory: u32,
     pub java: String,
@@ -33,6 +35,8 @@ impl Default for Settings {
             theme: 0,
             accent: 0,
             effects: !machine.low_end(),
+            background: String::new(),
+            roundness: 2,
             reduce_motion: false,
             memory: machine.recommended_memory(),
             java: String::new(),
@@ -58,6 +62,9 @@ impl Settings {
         let machine = Machine::get();
         s.memory = s.memory.clamp(1024, machine.max_memory().max(1024));
         s.threads = s.threads.clamp(2, 64);
+        s.theme = s.theme.clamp(0, 2);
+        s.accent = s.accent.clamp(0, 6);
+        s.roundness = s.roundness.clamp(0, 3);
         s
     }
 

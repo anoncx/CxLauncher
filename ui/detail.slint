@@ -31,7 +31,7 @@ component LinkChip inherits Rectangle {
 
     height: 26px;
     width: text.preferred-width + 24px;
-    border-radius: 13px;
+    border-radius: Theme.round(13px);
     background: touch.has-hover ? Theme.surface-2 : Theme.well;
     border-width: 1px;
     border-color: Theme.hair;
@@ -94,7 +94,7 @@ component Gallery inherits Rectangle {
                 Rectangle {
                     x: 0;
                     width: root.tile-width;
-                    border-radius: 10px;
+                    border-radius: Theme.round(10px);
                     background: Theme.well;
                     border-width: 1px;
                     border-color: tile.has-hover && image.has-image ? Theme.focus : Theme.hair;
@@ -131,7 +131,7 @@ component Gallery inherits Rectangle {
         y: 114px;
         width: root.width * part;
         height: 3px;
-        border-radius: 1.5px;
+        border-radius: Theme.round(1.5px);
         background: Theme.grey;
         opacity: 0.4;
     }
@@ -168,7 +168,7 @@ component BodyBlockView inherits Rectangle {
     if root.block.is-image && root.block.state == 1: Rectangle {
         width: root.natural-width * root.fit;
         height: root.natural-height * root.fit;
-        border-radius: 6px;
+        border-radius: Theme.round(6px);
         clip: true;
 
         Image {
@@ -320,7 +320,7 @@ export component ModDetailSheet inherits Rectangle {
             }
 
             if root.item.categories != "" || root.item.client-side != "" || root.item.updated != "": Rectangle {
-                border-radius: 10px;
+                border-radius: Theme.round(10px);
                 background: Theme.well;
                 clip: true;
 
@@ -369,7 +369,7 @@ export component ModDetailSheet inherits Rectangle {
                 property <length> content-height: prose.preferred-height + 44px;
 
                 height: min(self.content-height, max(240px, root.height - 400px));
-                border-radius: 12px;
+                border-radius: Theme.round(12px);
                 background: Theme.well;
                 border-width: 1px;
                 border-color: Theme.hair;

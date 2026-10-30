@@ -1,4 +1,4 @@
-use super::{background, later, profiles, App};
+use super::{background, later, options, profiles, App};
 use crate::auth::{self, Account};
 use crate::client;
 use crate::download::Progress;
@@ -161,6 +161,7 @@ impl App {
                 prepared.client.as_ref().map(|c| format!("{} {}", c.name, c.version)).unwrap_or_else(|| self.loader_label(&profile, &prepared.game))
             ),
         );
+        let _ = options::skip_onboarding(&prepared.game_dir);
         let _discrete_gpu = game::DiscreteGpuGuard::apply(self.settings.discrete_gpu);
         match Game::spawn(&prepared.java, &args, &prepared.game_dir) {
             Ok(game) => {

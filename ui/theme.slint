@@ -5,20 +5,27 @@ export global Theme {
     in-out property <int> accent-index: 0;
     in-out property <bool> effects: true;
     in-out property <bool> calm: false;
-    out property <bool> dark: mode == 2 || (mode == 0 && Palette.color-scheme == ColorScheme.dark);
+    in-out property <int> roundness-index: 2;
+    in-out property <color> custom-paper;
+    in-out property <bool> custom-dark;
+    in-out property <bool> has-paper: false;
+    in-out property <[color]> backgrounds;
+    in-out property <[string]> background-names;
+    out property <bool> dark: has-paper ? custom-dark : mode == 2 || (mode == 0 && Palette.color-scheme == ColorScheme.dark);
+    out property <float> scale: [0, 0.5, 1, 1.6][roundness-index];
 
     out property <[color]> accents: [#d71921, #ff6b1a, #e5a50a, #2fb35d, #0a84ff, #8e5cf7, #8e8e93];
     out property <[string]> accent-names: ["Red", "Orange", "Amber", "Green", "Blue", "Violet", "Mono"];
     out property <color> accent: accent-index == 6 ? ink : accents[accent-index];
     out property <color> on-accent: accent-index == 6 ? paper : #ffffff;
 
-    out property <color> paper: dark ? #000000 : #f4f4f2;
-    out property <color> surface: dark ? #1c1c1e : #ffffff;
-    out property <color> surface-2: dark ? #2c2c2e : #e8e8e5;
-    out property <color> well: dark ? #111113 : #f0f0ee;
+    out property <color> paper: has-paper ? custom-paper : dark ? #000000 : #f4f4f2;
+    out property <color> surface: has-paper ? (dark ? paper.mix(#ffffff, 0.93) : paper.mix(#ffffff, 0.35)) : dark ? #1c1c1e : #ffffff;
+    out property <color> surface-2: has-paper ? (dark ? paper.mix(#ffffff, 0.86) : paper.mix(#000000, 0.93)) : dark ? #2c2c2e : #e8e8e5;
+    out property <color> well: has-paper ? (dark ? paper.mix(#000000, 0.7) : paper.mix(#000000, 0.97)) : dark ? #111113 : #f0f0ee;
     out property <color> edge: dark ? #ffffff1c : #ffffff;
     out property <color> lift: !effects ? transparent : dark ? #00000000 : #0000000d;
-    out property <color> raised: dark ? #5a5a5e : #ffffff;
+    out property <color> raised: has-paper ? (dark ? paper.mix(#ffffff, 0.72) : paper.mix(#ffffff, 0.15)) : dark ? #5a5a5e : #ffffff;
     out property <color> ink: dark ? #ffffff : #000000;
     out property <color> ink-2: dark ? #d1d1d6 : #3a3a3c;
     out property <color> grey: #8e8e93;
@@ -34,8 +41,16 @@ export global Theme {
     out property <string> mono: "Geist Mono";
     out property <string> dots: "Doto";
 
-    out property <length> radius: 14px;
+    out property <length> radius: round(14px);
     out property <length> blur: effects ? 16px : 0px;
+
+    pure public function round(base: length) -> length {
+        return base * scale;
+    }
+
+    pure public function pill(extent: length) -> length {
+        return extent / 2 * Math.min(scale, 1);
+    }
 
     out property <duration> quick: calm ? 0ms : 160ms;
     out property <duration> smooth: calm ? 0ms : 380ms;

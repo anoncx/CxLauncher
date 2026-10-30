@@ -33,7 +33,7 @@ component ProfileCard inherits Rectangle {
             Rectangle {
                 width: 40px;
                 height: 40px;
-                border-radius: 12px;
+                border-radius: Theme.round(12px);
                 background: root.item.active ? Theme.accent : Theme.surface-2;
                 animate background { duration: Theme.quick; }
 

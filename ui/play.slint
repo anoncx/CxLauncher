@@ -36,7 +36,7 @@ component PlayButton inherits Rectangle {
 
     width: 236px;
     height: 58px;
-    border-radius: self.height / 2;
+    border-radius: Theme.pill(self.height);
     background: working || running ? Theme.surface : Theme.ink;
     opacity: ready || working || running ? 1 : 0.45;
     transform-scale: touch.pressed ? 0.96 : touch.has-hover && !working ? 1.025 : 1;
@@ -114,7 +114,7 @@ component PlayButton inherits Rectangle {
             Rectangle {
                 width: 10px;
                 height: 10px;
-                border-radius: 5px;
+                border-radius: Theme.round(5px);
                 background: Theme.accent;
                 transform-scale: root.pulse ? 1.25 : 0.85;
                 opacity: root.pulse ? 1 : 0.65;
@@ -139,7 +139,7 @@ component PlayButton inherits Rectangle {
         }
     }
 
-    Edge { inset: root.height / 2; }
+    Edge { inset: Theme.pill(root.height); }
 
     touch := TouchArea {
         mouse-cursor: MouseCursor.pointer;
@@ -154,7 +154,7 @@ component Chip inherits Rectangle {
     callback clicked();
 
     height: 30px;
-    border-radius: 15px;
+    border-radius: Theme.round(15px);
     background: touch.has-hover ? Theme.surface : Theme.surface.transparentize(Theme.dark ? 0.3 : 0.15);
     border-width: 1px;
     border-color: Theme.hair;
@@ -347,7 +347,7 @@ export component PlayPage inherits Rectangle {
                     Rectangle {
                         width: 7px;
                         height: 7px;
-                        border-radius: 3.5px;
+                        border-radius: Theme.round(3.5px);
                         background: root.state == 4 ? Theme.accent : Theme.grey.transparentize(0.4);
                         animate background { duration: 300ms; }
                     }
@@ -380,7 +380,7 @@ export component PlayPage inherits Rectangle {
                     Rectangle {
                         width: 40px;
                         height: 40px;
-                        border-radius: 20px;
+                        border-radius: Theme.round(20px);
                         background: stop.has-hover ? Theme.surface-2 : Theme.surface;
                         border-width: 1px;
                         border-color: Theme.hair;
@@ -536,7 +536,7 @@ export component PlayPage inherits Rectangle {
                         Rectangle {
                             width: 4px;
                             height: 4px;
-                            border-radius: 2px;
+                            border-radius: Theme.round(2px);
                             background: i == 0 ? Theme.accent : Theme.grey;
                         }
                     }
@@ -614,7 +614,7 @@ export component PlayPage inherits Rectangle {
                     Rectangle {
                         width: key.preferred-width + 12px;
                         height: 20px;
-                        border-radius: 6px;
+                        border-radius: Theme.round(6px);
                         background: Theme.surface-2;
                         key := Text {
                             text: "Right Shift";
@@ -634,7 +634,7 @@ export component PlayPage inherits Rectangle {
                     for m[i] in [modules[row * 3], modules[row * 3 + 1], modules[row * 3 + 2]]: Rectangle {
                         height: 26px;
                         width: label.preferred-width + 18px;
-                        border-radius: 13px;
+                        border-radius: Theme.round(13px);
                         background: chip.has-hover ? Theme.surface-2.darker(Theme.dark ? -0.2 : 0.05) : Theme.surface-2;
                         transform-scale: chip.has-hover ? 1.04 : 1;
                         animate background { duration: Theme.quick; }
@@ -679,7 +679,7 @@ export component PlayPage inherits Rectangle {
                             Rectangle {
                                 width: 6px;
                                 height: 6px;
-                                border-radius: 3px;
+                                border-radius: Theme.round(3px);
                                 background: Theme.accent;
                             }
                         }

@@ -6,6 +6,7 @@ mod import;
 mod instance;
 mod markdown;
 mod mods;
+mod options;
 mod play;
 mod profiles;
 mod settings;
@@ -16,7 +17,7 @@ use crate::mc::Endpoints;
 use crate::net::Http;
 use crate::paths::Paths;
 use crate::store::{Profile, Profiles, Settings};
-use crate::{AppWindow, Theme};
+use crate::AppWindow;
 use slint::{ComponentHandle, Model, ModelRc, SharedString, VecModel, Weak};
 use std::cell::RefCell;
 use std::rc::Rc;
@@ -287,10 +288,8 @@ pub fn run() -> Result<(), slint::PlatformError> {
     ui.set_shots(ModelRc::from(models.shots.clone()));
     ui.set_imports(ModelRc::from(models.imports.clone()));
     ui.set_tile(images::dot_tile(16));
-    ui.global::<Theme>().set_mode(settings.theme);
-    ui.global::<Theme>().set_accent_index(settings.accent.clamp(0, 6));
-    ui.global::<Theme>().set_effects(settings.effects);
-    ui.global::<Theme>().set_calm(settings.reduce_motion);
+    settings::install_backgrounds(&ui);
+    settings::apply_theme(&ui, &settings);
 
     let shared = Rc::new(RefCell::new(App {
         ui: ui.as_weak(),

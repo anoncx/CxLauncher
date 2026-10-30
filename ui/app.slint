@@ -170,7 +170,7 @@ export component AppWindow inherits Window {
                     Rectangle {
                         width: 7px;
                         height: 7px;
-                        border-radius: 3.5px;
+                        border-radius: Theme.round(3.5px);
                         background: root.state == 4 ? Theme.accent : root.state > 0 ? Theme.ink : Theme.grey.transparentize(0.5);
                         animate background { duration: 300ms; }
                     }
@@ -203,7 +203,7 @@ export component AppWindow inherits Window {
 
                     account := Rectangle {
                         height: 34px;
-                        border-radius: 17px;
+                        border-radius: Theme.round(17px);
                         background: acc-touch.has-hover ? Theme.surface-2 : root.has-account ? transparent : Theme.ink;
                         transform-scale: acc-touch.pressed ? 0.95 : 1;
                         animate background { duration: Theme.quick; }
@@ -374,7 +374,7 @@ export component AppWindow inherits Window {
                 y: parent.height - (self.height + 22px) * shown;
                 width: toast-text.preferred-width + 34px;
                 height: 36px;
-                border-radius: 18px;
+                border-radius: Theme.round(18px);
                 background: Theme.ink;
                 opacity: shown;
                 visible: shown > 0.01;
