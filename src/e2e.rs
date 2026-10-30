@@ -299,7 +299,7 @@ mod launch {
         let paths = Paths::new(work.join("home"));
         let ep = Endpoints::local(&mock.base);
         let http = Http::direct();
-        let profile = Profile { id: "cxvisuals".into(), name: "CxVisuals".into(), game: "26.2".into(), ..Default::default() };
+        let profile = Profile { id: "cxvisuals".into(), name: "CxVisuals".into(), game: "26.2".into(), client: true, ..Default::default() };
         let stages = Mutex::new(Vec::new());
         let progress = Progress::default();
         let request = Request { http: &http, ep: &ep, paths: &paths, profile: &profile, local_client: None, java: None, threads: 6, verify: false };
@@ -319,7 +319,7 @@ mod launch {
         let session = Session { name: "Tester".into(), uuid: "069a79f4-44e9-4726-a5be-fca90e38aaf5".into(), token: "secret".into(), xuid: String::new(), offline: false };
         let options = Options { memory: 1024, width: 1280, height: 720, ..Default::default() };
         let args = game::arguments(&prepared, &session, &options);
-        let mut running = Game::spawn(&prepared.java, &args, &prepared.game_dir).unwrap();
+        let mut running = Game::spawn(&prepared.java, &args, &prepared.game_dir, &game::Extras::default()).unwrap();
         let started = Instant::now();
         let code = loop {
             if let Some(code) = running.exited() {
@@ -366,7 +366,7 @@ mod launch {
         assert!(plain.mods.is_empty() && plain.client.is_none());
         assert!(!game::arguments(&plain, &session, &options).iter().any(|a| a.starts_with("-Dfabric.addMods")));
 
-        let wrong = Profile { id: "old".into(), game: "1.21.4".into(), ..Default::default() };
+        let wrong = Profile { id: "old".into(), game: "1.21.4".into(), client: true, ..Default::default() };
         let err = install::prepare(&Request { profile: &wrong, local_client: None, java: None, ..request }, &progress, &|_| {}).unwrap_err();
         assert!(err.contains("made for Minecraft 26.2"), "{err}");
 

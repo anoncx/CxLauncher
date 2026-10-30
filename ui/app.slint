@@ -58,6 +58,7 @@ export component AppWindow inherits Window {
     in property <int> mod-count;
     in property <string> client-game;
     in property <bool> client-on: true;
+    in property <bool> client-hint;
     in property <int> state;
     in property <float> progress;
     in property <string> detail;
@@ -72,6 +73,8 @@ export component AppWindow inherits Window {
     in property <string> profile-name;
     in property <int> profile-glyph;
     in-out property <int> profiles-tab;
+    in property <[Command]> profile-groups;
+    in-out property <string> profile-group;
     in property <[FindItem]> packs;
     in property <bool> packs-searching;
     in property <string> packs-note;
@@ -275,6 +278,7 @@ export component AppWindow inherits Window {
                             loader-name: root.loader-name;
                             mod-count: root.mod-count;
                             client-on: root.client-on;
+                            client-hint: root.client-hint;
                             state: root.state;
                             progress: root.progress;
                             detail: root.detail;
@@ -299,6 +303,8 @@ export component AppWindow inherits Window {
                         ProfilesPage {
                             profiles: root.profiles;
                             tab <=> root.profiles-tab;
+                            groups: root.profile-groups;
+                            group <=> root.profile-group;
                             packs: root.packs;
                             searching: root.packs-searching;
                             note: root.packs-note;

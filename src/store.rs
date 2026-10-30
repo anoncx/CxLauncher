@@ -12,6 +12,7 @@ pub struct Settings {
     pub background: String,
     pub roundness: i32,
     pub reduce_motion: bool,
+    pub hide_client_hint: bool,
     pub memory: u32,
     pub java: String,
     pub jvm_args: String,
@@ -38,6 +39,7 @@ impl Default for Settings {
             background: String::new(),
             roundness: 2,
             reduce_motion: false,
+            hide_client_hint: false,
             memory: machine.recommended_memory(),
             java: String::new(),
             jvm_args: String::new(),
@@ -73,7 +75,7 @@ impl Settings {
     }
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Default, Serialize, Deserialize)]
 #[serde(default)]
 pub struct Profile {
     pub id: String,
@@ -95,32 +97,14 @@ pub struct Profile {
     pub played: u64,
     pub include_snapshots: bool,
     pub source: String,
-}
-
-impl Default for Profile {
-    fn default() -> Self {
-        Self {
-            id: String::new(),
-            name: String::new(),
-            game: String::new(),
-            vanilla: false,
-            kind: String::new(),
-            client: true,
-            loader: String::new(),
-            pack: String::new(),
-            pack_id: String::new(),
-            pack_version: String::new(),
-            server: String::new(),
-            servers: Vec::new(),
-            java: String::new(),
-            glyph: 0,
-            created: 0,
-            last_played: 0,
-            played: 0,
-            include_snapshots: false,
-            source: String::new(),
-        }
-    }
+    pub memory: u32,
+    pub jvm_args: String,
+    pub env: String,
+    pub wrapper: String,
+    pub pre_launch: String,
+    pub post_exit: String,
+    pub notes: String,
+    pub group: String,
 }
 
 impl Profile {
@@ -155,7 +139,7 @@ impl Profiles {
         let mut p: Profiles = load_json(&paths.profiles_file());
         p.list.retain(|p| !p.id.is_empty() && p.id.chars().all(|c| c.is_ascii_alphanumeric() || c == '-'));
         if p.list.is_empty() {
-            p.list.push(Profile { id: "cxvisuals".into(), name: crate::client::NAME.into(), created: now(), ..Default::default() });
+            p.list.push(Profile { id: "minecraft".into(), name: "Minecraft".into(), vanilla: true, created: now(), ..Default::default() });
         }
         p
     }
@@ -194,7 +178,7 @@ mod tests {
         let paths = Paths::new(dir.clone());
         let mut p = Profiles::load(&paths);
         assert_eq!(p.list.len(), 1);
-        assert!(p.list[0].client);
+        assert!(!p.list[0].client);
         let id = p.add(Profile { name: "  Survival ".into(), ..Default::default() }).id.clone();
         p.save(&paths);
         let again = Profiles::load(&paths);

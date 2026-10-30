@@ -5,7 +5,7 @@ use crate::download::Progress;
 use crate::mc::loader::Loader;
 use crate::mc::{modrinth, mrpack};
 use crate::store::{new_id, Profile};
-use crate::sys::{ago, duration, now};
+use crate::sys::{ago, duration, now, Machine};
 use crate::{Command, ProfileEdit, ProfileItem, VersionItem};
 use std::path::{Path, PathBuf};
 
@@ -76,10 +76,18 @@ impl App {
     pub fn push_profiles(&mut self) {
         let Some(ui) = self.ui() else { return };
         let current = self.profile();
+        let mut groups: Vec<String> = self.profiles.list.iter().map(|p| p.group.clone()).filter(|g| !g.is_empty()).collect();
+        groups.sort();
+        groups.dedup();
+        if !groups.contains(&self.group_filter) {
+            self.group_filter.clear();
+        }
+        let shown = if self.group_filter.is_empty() { Vec::new() } else { vec![self.group_filter.clone()] };
         let items: Vec<ProfileItem> = self
             .profiles
             .list
             .iter()
+            .filter(|p| shown.is_empty() || shown.contains(&p.group))
             .map(|p| ProfileItem {
                 id: p.id.as_str().into(),
                 name: p.name.as_str().into(),
@@ -91,6 +99,10 @@ impl App {
             })
             .collect();
         self.models.profiles.set_vec(items);
+        let mut options = vec![Command { id: "".into(), title: "All groups".into(), detail: "".into() }];
+        options.extend(groups.iter().map(|g| Command { id: g.as_str().into(), title: g.as_str().into(), detail: "".into() }));
+        ui.set_profile_groups(slint::ModelRc::from(&*options));
+        ui.set_profile_group(self.group_filter.as_str().into());
         ui.set_profile_id(current.id.as_str().into());
         ui.set_profile_name(current.name.as_str().into());
         ui.set_profile_glyph(current.glyph.clamp(0, 5));
@@ -108,6 +120,40 @@ impl App {
         }
         versions.extend(self.info.versions.iter().filter(|v| filter.admits(v)).map(|v| VersionItem { id: v.id.as_str().into(), title: v.id.as_str().into(), detail: "".into(), tag: v.tag().into() }));
         self.models.versions.set_vec(versions);
+    }
+
+    pub fn add_client(&mut self) {
+        let id = self.profile().id;
+        let fits = |p: &Profile| p.game.trim().is_empty() || p.game == self.info.client_game;
+        if !self.profiles.get(&id).is_some_and(fits) {
+            self.toast(format!("CxVisuals is made for Minecraft {}. Pick that version first", self.info.client_game));
+            self.edit_profile(Some(""));
+            return;
+        }
+        if let Some(p) = self.profiles.get_mut(&id) {
+            p.vanilla = false;
+            p.client = true;
+            if !p.loader().runs_client() {
+                p.kind = Loader::Fabric.id().to_string();
+            }
+        }
+        self.profiles.save(&self.core.paths);
+        self.push_profiles();
+        self.push_play();
+        self.load_client_info();
+        self.toast("CxVisuals will be added on the next start");
+    }
+
+    pub fn hide_client_hint(&mut self) {
+        self.settings.hide_client_hint = true;
+        self.save();
+        self.push_play();
+        self.push_settings();
+    }
+
+    pub fn filter_group(&mut self, group: &str) {
+        self.group_filter = group.to_string();
+        self.push_profiles();
     }
 
     pub fn filter_versions(&mut self, arg: &str) {
@@ -175,6 +221,14 @@ impl App {
             java: p.java.as_str().into(),
             servers: slint::ModelRc::from(&*p.servers.iter().map(|s| Command { id: s.address.as_str().into(), title: if s.name.is_empty() { s.address.as_str().into() } else { s.name.as_str().into() }, detail: s.address.as_str().into() }).collect::<Vec<_>>()),
             include_snapshots,
+            memory: if p.memory > 0 { p.memory.to_string() } else { String::new() }.into(),
+            jvm_args: p.jvm_args.as_str().into(),
+            env: p.env.as_str().into(),
+            wrapper: p.wrapper.as_str().into(),
+            pre_launch: p.pre_launch.as_str().into(),
+            post_exit: p.post_exit.as_str().into(),
+            notes: p.notes.as_str().into(),
+            group: p.group.as_str().into(),
         });
         ui.set_profile_open(true);
         if !p.id.is_empty() {
@@ -199,6 +253,14 @@ impl App {
             p.include_snapshots = edit.include_snapshots;
             p.loader = edit.loader.trim().to_string();
             p.java = edit.java.trim().to_string();
+            p.memory = edit.memory.trim().parse::<u32>().map(|m| m.clamp(512, Machine::get().max_memory().max(1024))).unwrap_or(0);
+            p.jvm_args = edit.jvm_args.trim().to_string();
+            p.env = edit.env.trim().to_string();
+            p.wrapper = edit.wrapper.trim().to_string();
+            p.pre_launch = edit.pre_launch.trim().to_string();
+            p.post_exit = edit.post_exit.trim().to_string();
+            p.notes = edit.notes.trim().to_string();
+            p.group = edit.group.trim().chars().take(24).collect();
             p.server = edit.server.trim().to_string();
             if !p.server.is_empty() && !p.servers.iter().any(|s| s.address == p.server) {
                 p.servers.push(crate::store::Server { name: p.server.clone(), address: p.server.clone() });

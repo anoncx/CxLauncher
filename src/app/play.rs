@@ -1,4 +1,5 @@
 use super::{background, later, options, profiles, App};
+use crate::hooks;
 use crate::auth::{self, Account};
 use crate::client;
 use crate::download::Progress;
@@ -96,6 +97,13 @@ impl App {
                 verify: repair,
             };
             let result = install::prepare(&request, &progress, &|stage| later(move |app| app.on_stage(stage)));
+            let result = result.and_then(|prepared| {
+                if !profile.pre_launch.trim().is_empty() {
+                    let vars = hooks::variables(&profile, &prepared.game_dir, &prepared.game);
+                    hooks::run_before(&profile.pre_launch, &vars, &prepared.game_dir)?;
+                }
+                Ok(prepared)
+            });
             later(move |app| app.prepared(result, account));
         });
     }
@@ -139,9 +147,9 @@ impl App {
         let profile = self.profile();
         let session = Session { name: account.name.clone(), uuid: account.uuid.clone(), token: account.token.clone(), xuid: String::new(), offline: account.offline };
         let options = Options {
-            memory: self.settings.memory,
+            memory: if profile.memory > 0 { profile.memory } else { self.settings.memory },
             collector: self.settings.collector,
-            jvm_args: self.settings.jvm_args.clone(),
+            jvm_args: format!("{} {}", self.settings.jvm_args, profile.jvm_args),
             width: self.settings.width,
             height: self.settings.height,
             fullscreen: self.settings.fullscreen,
@@ -163,7 +171,8 @@ impl App {
         );
         let _ = options::skip_onboarding(&prepared.game_dir);
         let _discrete_gpu = game::DiscreteGpuGuard::apply(self.settings.discrete_gpu);
-        match Game::spawn(&prepared.java, &args, &prepared.game_dir) {
+        let extras = game::Extras { wrapper: game::split_args(&profile.wrapper), env: hooks::parse_env(&profile.env) };
+        match Game::spawn(&prepared.java, &args, &prepared.game_dir, &extras) {
             Ok(game) => {
                 if let Some(p) = self.profiles.get_mut(&profile.id) {
                     p.last_played = now();
@@ -250,6 +259,7 @@ impl App {
             p.played += started.elapsed().as_secs();
         }
         self.profiles.save(&self.core.paths);
+        self.run_post_exit(&profile, code);
         self.console.push(game::Level::Debug, format!("Minecraft closed with code {code}"));
         self.log_changed();
         if let Some(ui) = self.ui() {
@@ -261,6 +271,14 @@ impl App {
         }
         self.push_profiles();
         self.push_play();
+    }
+
+    fn run_post_exit(&self, id: &str, code: i32) {
+        let Some(profile) = self.profiles.get(id).filter(|p| !p.post_exit.trim().is_empty()).cloned() else { return };
+        let dir = self.core.paths.profile(id);
+        let mut vars = hooks::variables(&profile, &dir, &self.game_of(&profile));
+        vars.push(("INST_EXIT_CODE".into(), code.to_string()));
+        hooks::run_after(&profile.post_exit, &vars, &dir);
     }
 
     fn push_progress(&self) {
@@ -304,6 +322,7 @@ impl App {
         }
         ui.set_error(self.info.error.clone().into());
         ui.set_client_on(profile.uses_client());
+        ui.set_client_hint(!self.settings.hide_client_hint && !profile.uses_client() && (profile.vanilla || profile.loader().runs_client()));
         ui.set_client_name(if self.info.name.is_empty() { client::NAME.into() } else { self.info.name.clone().into() });
         ui.set_client_version(self.info.version.clone().into());
         let game = self.game_of(&profile);

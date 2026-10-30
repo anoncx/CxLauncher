@@ -9,6 +9,7 @@ mod download;
 #[cfg(test)]
 mod e2e;
 mod game;
+mod hooks;
 mod install;
 mod mc;
 mod net;

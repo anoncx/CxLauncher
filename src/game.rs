@@ -21,6 +21,12 @@ pub struct Session {
 }
 
 #[derive(Clone, Debug, Default)]
+pub struct Extras {
+    pub wrapper: Vec<String>,
+    pub env: Vec<(String, String)>,
+}
+
+#[derive(Clone, Debug, Default)]
 pub struct Options {
     pub memory: u32,
     pub collector: i32,
@@ -247,9 +253,16 @@ fn pump(stream: impl Read + Send + 'static, log: Arc<Mutex<Log>>, fallback: Leve
 }
 
 impl Game {
-    pub fn spawn(java: &std::path::Path, args: &[String], cwd: &std::path::Path) -> Result<Game, String> {
-        let mut cmd = Command::new(java);
-        cmd.args(args).current_dir(cwd).stdin(Stdio::null()).stdout(Stdio::piped()).stderr(Stdio::piped());
+    pub fn spawn(java: &std::path::Path, args: &[String], cwd: &std::path::Path, extras: &Extras) -> Result<Game, String> {
+        let mut cmd = match extras.wrapper.split_first() {
+            Some((program, rest)) => {
+                let mut cmd = Command::new(program);
+                cmd.args(rest).arg(java);
+                cmd
+            }
+            None => Command::new(java),
+        };
+        cmd.args(args).envs(extras.env.iter().map(|(k, v)| (k, v))).current_dir(cwd).stdin(Stdio::null()).stdout(Stdio::piped()).stderr(Stdio::piped());
         hide_console(&mut cmd);
         let mut child = cmd.spawn().map_err(|e| format!("could not start Java: {e}"))?;
         let log = Arc::new(Mutex::new(Log::default()));

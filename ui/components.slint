@@ -1053,7 +1053,7 @@ export component Sheet inherits Rectangle {
         x: (root.width - self.width) / 2;
         y: max(24px, (root.height - self.height) / 2);
         width: min(root.card-width, root.width - 48px);
-        height: body.preferred-height;
+        height: min(body.preferred-height, root.height - 48px);
         border-radius: Theme.round(18px);
         background: Theme.surface;
         drop-shadow-blur: Theme.effects ? 40px : 0;
@@ -1068,11 +1068,16 @@ export component Sheet inherits Rectangle {
 
         Edge { inset: Theme.round(18px); }
 
-        body := VerticalLayout {
-            padding: 24px;
-            spacing: 16px;
+        Scroll {
+            content-height: body.preferred-height;
 
-            @children
+            body := VerticalLayout {
+                width: parent.width;
+                padding: 24px;
+                spacing: 16px;
+
+                @children
+            }
         }
     }
 }

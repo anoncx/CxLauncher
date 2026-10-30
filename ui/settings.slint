@@ -302,6 +302,15 @@ export component SettingsPage inherits Rectangle {
 
                 Group {
                     Row {
+                        title: "Suggest CxVisuals";
+                        detail: "Show an optional hint on profiles that do not use it.";
+                        Toggle {
+                            checked: root.data.client-hint;
+                            toggled(on) => { root.setting("client-hint", on ? "1" : "0"); }
+                        }
+                    }
+
+                    Row {
                         title: "Client build";
                         detail: root.data.local ? root.data.local-jar : "Latest release from the CxVisuals cloud.";
                         divider: false;

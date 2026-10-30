@@ -1,5 +1,5 @@
 import { Theme } from "theme.slint";
-import { Button, Edge, Icon, IconButton, Icons, Scroll, Segmented } from "components.slint";
+import { Button, Edge, Icon, IconButton, Icons, Scroll, Segmented, Select } from "components.slint";
 import { SearchPane } from "rows.slint";
 import { Command, FindItem, ProfileItem } from "types.slint";
 
@@ -111,6 +111,8 @@ component ProfileCard inherits Rectangle {
 export component ProfilesPage inherits Rectangle {
     in property <[ProfileItem]> profiles;
     in-out property <int> tab;
+    in property <[Command]> groups;
+    in-out property <string> group;
     in property <[FindItem]> packs;
     in property <bool> searching;
     in property <string> note;
@@ -158,6 +160,17 @@ export component ProfilesPage inherits Rectangle {
                     items: ["Library", "Modpacks"];
                     current <=> root.tab;
                     segment: 96px;
+                }
+            }
+
+            if root.tab == 0 && root.groups.length > 1: VerticalLayout {
+                alignment: center;
+                Select {
+                    options: root.groups;
+                    current: root.group;
+                    label: root.group == "" ? "All groups" : root.group;
+                    menu-width: 200px;
+                    selected(id) => { root.command("filter-group:" + id); }
                 }
             }
 

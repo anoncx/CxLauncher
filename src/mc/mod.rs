@@ -59,7 +59,7 @@ impl Default for Endpoints {
             modrinth: "https://api.modrinth.com/v2".into(),
             client: "https://visuals.cxiy.dev/v2/client".into(),
             cloud: "https://visuals.cxiy.dev".into(),
-            launcher: "https://visuals.cxiy.dev/v2/launcher".into(),
+            launcher: "https://github.com/anoncx/CxLauncher/releases/latest/download/launcher.json".into(),
             live: "https://login.live.com".into(),
             xbox_user: "https://user.auth.xboxlive.com".into(),
             xsts: "https://xsts.auth.xboxlive.com".into(),

@@ -123,6 +123,26 @@ jobs:
           path: dist
           merge-multiple: true
 
+      - name: Update manifest
+        shell: bash
+        env:
+          NOTES: ${{ github.event.head_commit.message }}
+        run: |
+          v=${{ needs.version.outputs.version }}
+          base="https://github.com/${{ github.repository }}/releases/download/v$v"
+          for path in dist/*; do
+            f=$(basename "$path")
+            case "$f" in
+              *-setup.exe) platform=windows; kind=installer ;;
+              *-portable.exe) platform=windows; kind=portable ;;
+              *.AppImage) platform=linux; kind=appimage ;;
+              *.deb) platform=linux; kind=deb ;;
+              *) continue ;;
+            esac
+            jq -n --arg file "$f" --arg platform "$platform" --arg kind "$kind" --arg url "$base/$f"               --argjson size "$(stat -c %s "$path")" --arg sha256 "$(sha256sum "$path" | cut -d' ' -f1)"               '{file: $file, platform: $platform, kind: $kind, url: $url, size: $size, sha256: $sha256}'
+          done | jq -s --arg version "$v" --arg notes "$NOTES" --arg page "https://github.com/${{ github.repository }}/releases/tag/v$v"             '{version: $version, notes: $notes, page: $page, files: .}' > dist/launcher.json
+          cat dist/launcher.json
+
       - uses: softprops/action-gh-release@v2
         with:
           tag_name: v${{ needs.version.outputs.version }}

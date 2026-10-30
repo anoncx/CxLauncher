@@ -289,6 +289,36 @@ export component SigninSheet inherits Sheet {
     }
 }
 
+component AdvancedField inherits VerticalLayout {
+    in property <string> title;
+    in property <string> detail;
+    in property <string> placeholder;
+    in property <string> value;
+    callback edited(string);
+
+    spacing: 4px;
+
+    Text {
+        text: root.title;
+        font-size: 11.5px;
+        color: Theme.grey;
+    }
+
+    Input {
+        mono: true;
+        placeholder: root.placeholder;
+        value: root.value;
+        edited(t) => { root.edited(t); }
+    }
+
+    Text {
+        text: root.detail;
+        font-size: 11px;
+        color: Theme.grey;
+        wrap: word-wrap;
+    }
+}
+
 export component ProfileSheet inherits Sheet {
     in property <ProfileEdit> data;
     in property <bool> can-delete;
@@ -320,6 +350,15 @@ export component ProfileSheet inherits Sheet {
     property <bool> include-snapshots: data.include-snapshots;
     property <string> version-query;
     property <bool> confirm;
+    property <int> tab;
+    property <string> memory: data.memory;
+    property <string> jvm-args: data.jvm-args;
+    property <string> env: data.env;
+    property <string> wrapper: data.wrapper;
+    property <string> pre-launch: data.pre-launch;
+    property <string> post-exit: data.post-exit;
+    property <string> notes: data.notes;
+    property <string> group: data.group;
 
     card-width: 480px;
 
@@ -328,6 +367,15 @@ export component ProfileSheet inherits Sheet {
         badge: root.data.pack != "" ? "PACK" : "";
         live: true;
     }
+
+    Segmented {
+        items: ["General", "Advanced"];
+        current <=> root.tab;
+        segment: 120px;
+    }
+
+    if root.tab == 0: VerticalLayout {
+        spacing: 16px;
 
     VerticalLayout {
         spacing: 6px;
@@ -622,6 +670,93 @@ export component ProfileSheet inherits Sheet {
         }
     }
 
+    }
+
+    if root.tab == 1: VerticalLayout {
+        spacing: 16px;
+
+        AdvancedField {
+            title: "Group";
+            detail: "Profiles with the same group can be filtered on the Profiles page.";
+            placeholder: "Survival, Modded, Servers";
+            value: root.data.group;
+            edited(t) => { root.group = t; }
+        }
+
+        AdvancedField {
+            title: "Memory (MB)";
+            detail: "Blank uses the amount from Settings.";
+            placeholder: "Default";
+            value: root.data.memory;
+            edited(t) => { root.memory = t; }
+        }
+
+        AdvancedField {
+            title: "Extra Java arguments";
+            detail: "Added after the arguments from Settings.";
+            placeholder: "-Dexample=1";
+            value: root.data.jvm-args;
+            edited(t) => { root.jvm-args = t; }
+        }
+
+        AdvancedField {
+            title: "Environment variables";
+            detail: "KEY=VALUE pairs separated by spaces, only for this profile's game.";
+            placeholder: "MESA_GL_VERSION_OVERRIDE=4.5";
+            value: root.data.env;
+            edited(t) => { root.env = t; }
+        }
+
+        AdvancedField {
+            title: "Notes";
+            detail: "Only you see these.";
+            placeholder: "What this profile is for";
+            value: root.data.notes;
+            edited(t) => { root.notes = t; }
+        }
+
+        Rectangle {
+            border-radius: Theme.round(12px);
+            background: Theme.well;
+
+            VerticalLayout {
+                padding: 14px;
+                spacing: 14px;
+
+                Text {
+                    text: "These commands run with your permissions. Only use ones you trust.";
+                    font-size: 11.5px;
+                    color: Theme.warn;
+                    wrap: word-wrap;
+                }
+
+                AdvancedField {
+                    title: "Wrapper command";
+                    detail: "Starts Java through this program, for example gamemoderun.";
+                    placeholder: "gamemoderun";
+                    value: root.data.wrapper;
+                    edited(t) => { root.wrapper = t; }
+                }
+
+                AdvancedField {
+                    title: "Before launch";
+                    detail: "Runs and finishes before Minecraft starts. A failure stops the launch.";
+                    placeholder: "path/to/script";
+                    value: root.data.pre-launch;
+                    edited(t) => { root.pre-launch = t; }
+                }
+
+                AdvancedField {
+                    title: "After exit";
+                    detail: "Runs once Minecraft has closed. INST_EXIT_CODE holds the exit code.";
+                    placeholder: "path/to/script";
+                    value: root.data.post-exit;
+                    edited(t) => { root.post-exit = t; }
+                }
+            }
+        }
+    }
+
     HorizontalLayout {
         spacing: 8px;
 
@@ -669,6 +804,14 @@ export component ProfileSheet inherits Sheet {
                     java: root.java,
                     servers: root.data.servers,
                     include-snapshots: root.include-snapshots,
+                    memory: root.memory,
+                    jvm-args: root.jvm-args,
+                    env: root.env,
+                    wrapper: root.wrapper,
+                    pre-launch: root.pre-launch,
+                    post-exit: root.post-exit,
+                    notes: root.notes,
+                    group: root.group,
                 });
             }
         }

@@ -133,6 +133,14 @@ export struct ProfileEdit {
     java: string,
     servers: [Command],
     include-snapshots: bool,
+    memory: string,
+    jvm-args: string,
+    env: string,
+    wrapper: string,
+    pre-launch: string,
+    post-exit: string,
+    notes: string,
+    group: string,
 }
 
 export struct WorldItem {
@@ -166,6 +174,7 @@ export struct SettingsView {
     version: string,
     update: string,
     update-busy: bool,
+    client-hint: bool,
     background: string,
     background-index: int,
     machine: string,
