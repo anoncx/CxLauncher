@@ -72,6 +72,8 @@ pub struct App {
     import: import::Import,
     group_filter: String,
     pub sharing: bool,
+    pub pending_world: String,
+    args: crate::cli::Args,
     update: Option<crate::update::Release>,
     update_busy: bool,
     ticker: slint::Timer,
@@ -199,6 +201,8 @@ impl App {
             "content" => self.set_content(arg.parse().unwrap_or(0)),
             "filter-group" => self.filter_group(arg),
             "client-add" => self.add_client(),
+            "play-world" => self.play_world(arg),
+            "shortcut" => self.make_shortcut(arg),
             "client-hint-hide" => self.hide_client_hint(),
             "update-mods" => self.update_mods(),
             "update-pack" => self.update_pack(arg),
@@ -246,6 +250,7 @@ impl App {
         self.push_log();
         self.import_check();
         self.check_update();
+        self.run_args();
         let weak = self.ui.clone();
         let timer = slint::Timer::default();
         timer.start(slint::TimerMode::Repeated, Duration::from_secs(90), move || {
@@ -322,6 +327,8 @@ pub fn run() -> Result<(), slint::PlatformError> {
         import: Default::default(),
         group_filter: String::new(),
         sharing: false,
+        pending_world: String::new(),
+        args: crate::cli::parse(std::env::args().skip(1)),
         update: None,
         update_busy: false,
         ticker: slint::Timer::default(),

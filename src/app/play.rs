@@ -154,6 +154,7 @@ impl App {
             height: self.settings.height,
             fullscreen: self.settings.fullscreen,
             server: profile.server.clone(),
+            world: std::mem::take(&mut self.pending_world),
         };
         let args = game::arguments(&prepared, &session, &options);
         self.console.clear();
@@ -401,6 +402,9 @@ impl App {
     }
 
     pub fn poll_online(&mut self) {
+        if self.settings.hide_online {
+            return;
+        }
         let core = self.core.clone();
         background(move || {
             let online = core

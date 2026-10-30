@@ -35,6 +35,7 @@ pub struct Options {
     pub height: u32,
     pub fullscreen: bool,
     pub server: String,
+    pub world: String,
 }
 
 /// Prism Launcher `UseDiscreteGpu` env block: DRI_PRIME for open drivers,
@@ -134,7 +135,7 @@ fn join(paths: &[PathBuf]) -> String {
 
 pub fn arguments(p: &Prepared, s: &Session, o: &Options) -> Vec<String> {
     let custom_size = !o.fullscreen && o.width >= 320 && o.height >= 240;
-    let env = Env::current().feature("has_custom_resolution", custom_size).feature("is_quick_play_multiplayer", !o.server.trim().is_empty());
+    let env = Env::current().feature("has_custom_resolution", custom_size).feature("is_quick_play_multiplayer", !o.server.trim().is_empty() && o.world.trim().is_empty()).feature("is_quick_play_singleplayer", !o.world.trim().is_empty());
     let text = |p: &PathBuf| p.to_string_lossy().into_owned();
     let vars: Vars = [
         ("auth_player_name", s.name.clone()),
@@ -160,6 +161,7 @@ pub fn arguments(p: &Prepared, s: &Session, o: &Options) -> Vec<String> {
         ("resolution_width", o.width.to_string()),
         ("resolution_height", o.height.to_string()),
         ("quickPlayMultiplayer", o.server.trim().to_string()),
+        ("quickPlaySingleplayer", o.world.trim().to_string()),
     ]
     .into_iter()
     .collect();

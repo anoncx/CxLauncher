@@ -1,6 +1,6 @@
 use crate::download::{self, Hash, Job, Progress};
 use super::loader::Loader;
-use crate::net::Http;
+use crate::net::{host, Http};
 use serde::Deserialize;
 use std::collections::HashMap;
 use std::io::Read;
@@ -48,6 +48,12 @@ pub struct Pack {
     pub version: String,
     pub game: String,
     pub loader: Option<(Loader, String)>,
+}
+
+const TRUSTED: [&str; 4] = ["cdn.modrinth.com", "github.com", "raw.githubusercontent.com", "gitlab.com"];
+
+fn trusted(url: &str) -> bool {
+    url.starts_with("https://") && TRUSTED.contains(&host(url))
 }
 
 fn safe(rel: &str) -> bool {
@@ -98,11 +104,12 @@ pub fn install(http: &Http, file: &Path, game_dir: &Path, threads: usize, progre
     let mut zip = zip::ZipArchive::new(std::fs::File::open(file).map_err(|e| e.to_string())?).map_err(|_| "this is not a modpack file".to_string())?;
     let index = index(&mut zip)?;
     let pack = describe(&index)?;
-    let jobs: Vec<Job> = index
-        .files
-        .iter()
-        .filter(|f| f.env.as_ref().is_none_or(|e| e.client != "unsupported"))
-        .filter(|f| safe(&f.path))
+    let wanted: Vec<&PackFile> = index.files.iter().filter(|f| f.env.as_ref().is_none_or(|e| e.client != "unsupported")).filter(|f| safe(&f.path)).collect();
+    if let Some(url) = wanted.iter().filter_map(|f| f.downloads.first()).find(|u| !trusted(u)) {
+        return Err(format!("This modpack downloads from {}, which Modrinth does not allow, so nothing was installed", host(url)));
+    }
+    let jobs: Vec<Job> = wanted
+        .into_iter()
         .filter_map(|f| {
             let url = f.downloads.first()?;
             let mut job = Job::new(url, game_dir.join(&f.path)).size(f.size);

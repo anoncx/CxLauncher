@@ -151,6 +151,41 @@ impl App {
         self.push_settings();
     }
 
+    pub fn run_args(&mut self) {
+        if let Some(file) = self.args.import.take() {
+            self.import_file(file);
+        }
+        let Some(wanted) = self.args.launch.take() else { return };
+        let found = self.profiles.list.iter().find(|p| p.id == wanted).or_else(|| self.profiles.list.iter().find(|p| p.name.eq_ignore_ascii_case(&wanted))).map(|p| p.id.clone());
+        match found {
+            Some(id) => {
+                self.pending_world = self.args.world.take().unwrap_or_default();
+                self.play_profile(&id);
+            }
+            None => self.toast(format!("There is no profile called {wanted}")),
+        }
+    }
+
+    pub fn play_world(&mut self, arg: &str) {
+        let Some((id, folder)) = arg.split_once('|') else { return };
+        if !matches!(self.run, Run::Idle) {
+            return;
+        }
+        if let Some(ui) = self.ui() {
+            ui.set_profile_open(false);
+        }
+        self.pending_world = folder.to_string();
+        self.play_profile(id);
+    }
+
+    pub fn make_shortcut(&mut self, id: &str) {
+        let Some(profile) = self.profiles.get(id).cloned() else { return };
+        match crate::shortcut::create(&profile.id, &profile.name) {
+            Ok(path) => self.toast(format!("Shortcut created: {}", path.display())),
+            Err(e) => self.toast(format!("Could not create the shortcut: {e}")),
+        }
+    }
+
     pub fn filter_group(&mut self, group: &str) {
         self.group_filter = group.to_string();
         self.push_profiles();
@@ -458,6 +493,10 @@ impl App {
 
     pub fn import_pack(&mut self) {
         let Some(file) = rfd::FileDialog::new().set_title("Import a modpack").add_filter("Modrinth modpack", &["mrpack", "zip"]).pick_file() else { return };
+        self.import_file(file);
+    }
+
+    pub fn import_file(&mut self, file: PathBuf) {
         match mrpack::read(&file) {
             Ok(pack) => self.unpack(pack.name.clone(), move |_| Ok((file, String::new())), |app, id, pack, _| app.add_pack(id, pack, String::new(), String::new())),
             Err(e) => self.toast(e),

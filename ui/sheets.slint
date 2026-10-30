@@ -633,6 +633,16 @@ export component ProfileSheet inherits Sheet {
                             horizontal-stretch: 1;
                         }
                         Text {
+                            text: "Play";
+                            color: play-world.has-hover ? Theme.ink : Theme.accent;
+                            font-size: 11px;
+                            vertical-alignment: center;
+                            play-world := TouchArea {
+                                mouse-cursor: MouseCursor.pointer;
+                                clicked => { root.command("play-world:" + root.data.id + "|" + w.folder); }
+                            }
+                        }
+                        Text {
                             text: w.detail;
                             color: Theme.grey;
                             font-size: 11px;
@@ -777,6 +787,12 @@ export component ProfileSheet inherits Sheet {
             text: "Folder";
             icon: Icons.folder;
             clicked => { root.command("open-profile-folder:" + root.data.id); }
+        }
+
+        if root.data.id != "": Button {
+            text: "Shortcut";
+            icon: Icons.play;
+            clicked => { root.command("shortcut:" + root.data.id); }
         }
 
         Rectangle { horizontal-stretch: 1; }

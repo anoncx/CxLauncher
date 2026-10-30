@@ -344,6 +344,25 @@ export component SettingsPage inherits Rectangle {
                     }
                 }
 
+                GroupLabel { text: "Privacy"; }
+
+                Group {
+                    Row {
+                        title: "Show players online";
+                        detail: "Asks the CxVisuals server for a player count every few minutes. No account or identifier is sent.";
+                        Toggle {
+                            checked: root.data.show-online;
+                            toggled(on) => { root.setting("show-online", on ? "1" : "0"); }
+                        }
+                    }
+
+                    Row {
+                        title: "No accounts, no analytics";
+                        detail: "CxLauncher talks to Microsoft and Mojang (sign-in, game files), Modrinth (mods and modpacks), GitHub (updates) and the CxVisuals server (client builds). Sharing a log with mclo.gs only happens when you press Upload.";
+                        divider: false;
+                    }
+                }
+
                 GroupLabel { text: "About"; }
 
                 Group {

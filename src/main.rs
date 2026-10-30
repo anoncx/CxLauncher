@@ -4,6 +4,7 @@ slint::include_modules!();
 
 mod app;
 mod auth;
+mod cli;
 mod client;
 mod crash;
 mod download;
@@ -16,6 +17,7 @@ mod mc;
 mod net;
 mod paths;
 mod share;
+mod shortcut;
 mod skin;
 mod store;
 mod sys;
