@@ -53,7 +53,8 @@ pub struct Pack {
 const TRUSTED: [&str; 4] = ["cdn.modrinth.com", "github.com", "raw.githubusercontent.com", "gitlab.com"];
 
 fn trusted(url: &str) -> bool {
-    url.starts_with("https://") && TRUSTED.contains(&host(url))
+    let local = cfg!(debug_assertions) && url.starts_with("http://127.0.0.1");
+    local || (url.starts_with("https://") && TRUSTED.contains(&host(url)))
 }
 
 fn safe(rel: &str) -> bool {

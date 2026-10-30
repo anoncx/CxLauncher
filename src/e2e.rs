@@ -230,7 +230,7 @@ mod launch {
         })
         .to_string();
         m.put("/mojang/26.2.json", version.clone());
-        m.put("/mojang/version_manifest_v2.json", json!({"versions": [{"id": "26.2", "type": "release", "url": format!("{b}/mojang/26.2.json"), "sha1": sha1(version.as_bytes())}]}).to_string());
+        m.put("/mojang/version_manifest_v2.json", json!({"latest": {"release": "26.2", "snapshot": "26.2"}, "versions": [{"id": "26.2", "type": "release", "url": format!("{b}/mojang/26.2.json"), "sha1": sha1(version.as_bytes())}]}).to_string());
         m.put("/mojang/client.jar", client);
         m.put("/libs/lib-1.0.jar", lib);
 
@@ -368,7 +368,7 @@ mod launch {
 
         let wrong = Profile { id: "old".into(), game: "1.21.4".into(), client: true, ..Default::default() };
         let err = install::prepare(&Request { profile: &wrong, local_client: None, java: None, ..request }, &progress, &|_| {}).unwrap_err();
-        assert!(err.contains("made for Minecraft 26.2"), "{err}");
+        assert!(err.contains("cannot get CxVisuals for Minecraft 1.21.4"), "{err}");
 
         let pack_file = work.join("pack.mrpack");
         let api_bytes = std::fs::read(mods.join("my-fabric-api.jar")).unwrap();
