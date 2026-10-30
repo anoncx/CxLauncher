@@ -9,6 +9,7 @@ mod mods;
 mod play;
 mod profiles;
 mod settings;
+mod updater;
 
 use crate::auth::Accounts;
 use crate::mc::Endpoints;
@@ -67,6 +68,8 @@ pub struct App {
     info: play::Info,
     version_filter: profiles::VersionFilter,
     import: import::Import,
+    update: Option<crate::update::Release>,
+    update_busy: bool,
     ticker: slint::Timer,
     timers: Vec<slint::Timer>,
 }
@@ -144,6 +147,7 @@ impl App {
             "console" => self.go(3),
             "copy-log" => self.copy_log(),
             "open-logs" => crate::sys::reveal(&self.core.paths.profile(&self.profile().id).join("logs")),
+            "install-update" => self.install_update(),
             "open-data" => crate::sys::reveal(&self.core.paths.root),
             "open-game-folder" => self.open_profile_folder(&self.profile().id),
             "open-profile-folder" => self.open_profile_folder(arg),
@@ -229,6 +233,7 @@ impl App {
         self.push_play();
         self.push_log();
         self.import_check();
+        self.check_update();
         let weak = self.ui.clone();
         let timer = slint::Timer::default();
         timer.start(slint::TimerMode::Repeated, Duration::from_secs(90), move || {
@@ -305,6 +310,8 @@ pub fn run() -> Result<(), slint::PlatformError> {
         info: play::Info { online: -1, ..Default::default() },
         version_filter: Default::default(),
         import: Default::default(),
+        update: None,
+        update_busy: false,
         ticker: slint::Timer::default(),
         timers: Vec::new(),
     }));

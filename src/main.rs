@@ -16,6 +16,7 @@ mod paths;
 mod skin;
 mod store;
 mod sys;
+mod update;
 
 fn main() {
     if let Err(e) = app::run() {

@@ -284,8 +284,12 @@ export component SettingsPage inherits Rectangle {
                 Group {
                     Row {
                         title: "CxLauncher " + root.data.version;
-                        detail: "Native Rust and Slint. Fonts: Geist and Doto under the SIL Open Font License.";
+                        detail: root.data.update != "" ? "Version " + root.data.update + " is available." : "Native Rust and Slint. Fonts: Geist and Doto under the SIL Open Font License.";
                         divider: false;
+                        if root.data.update != "": Button {
+                            text: root.data.update-busy ? "Updating…" : "Update";
+                            clicked => { root.command("install-update"); }
+                        }
                     }
                 }
             }

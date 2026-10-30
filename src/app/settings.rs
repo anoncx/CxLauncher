@@ -42,6 +42,8 @@ impl App {
             local_jar: s.local_client.as_str().into(),
             data_dir: self.core.paths.root.to_string_lossy().as_ref().into(),
             version: concat!("v", env!("CARGO_PKG_VERSION")).into(),
+            update: self.update.as_ref().map(|u| u.version.as_str()).unwrap_or_default().into(),
+            update_busy: self.update_busy,
             machine: format!("{:.0} GB RAM, {} cores", machine.memory_mb as f32 / 1024.0, machine.cores).into(),
         });
         let mut javas = vec![command("", "Managed by CxLauncher", "Downloads the Java Minecraft asks for")];
